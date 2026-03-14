@@ -1,0 +1,12 @@
+{% for resource in resources %}
+resource "aws_vpc" "{{ resource.logical_name }}" {
+  cidr_block = "{{ resource.attributes.cidr_block }}"
+{% if resource.attributes.get('tags') %}
+  tags = {
+{% for k, v in resource.attributes.tags.items() %}
+    "{{ k }}" = "{{ v }}"
+{% endfor %}
+  }
+{% endif %}
+}
+{% endfor %}

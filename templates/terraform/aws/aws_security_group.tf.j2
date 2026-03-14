@@ -1,0 +1,38 @@
+{% for resource in resources %}
+resource "aws_security_group" "{{ resource.logical_name }}" {
+  name        = "{{ resource.attributes.name }}"
+  description = "{{ resource.attributes.get('description', '') }}"
+{% if resource.attributes.get('vpc_id') %}
+  vpc_id      = {{ resource.attributes.vpc_id }}
+{% endif %}
+{% if resource.attributes.get('ingress') %}
+  dynamic "ingress" {
+    for_each = {{ resource.attributes.ingress | tojson }}
+    content {
+      from_port   = ingress.value.from_port
+      to_port     = ingress.value.to_port
+      protocol    = ingress.value.protocol
+      cidr_blocks = ingress.value.cidr_blocks
+    }
+  }
+{% endif %}
+{% if resource.attributes.get('egress') %}
+  dynamic "egress" {
+    for_each = {{ resource.attributes.egress | tojson }}
+    content {
+      from_port   = egress.value.from_port
+      to_port     = egress.value.to_port
+      protocol    = egress.value.protocol
+      cidr_blocks = egress.value.cidr_blocks
+    }
+  }
+{% endif %}
+{% if resource.attributes.get('tags') %}
+  tags = {
+{% for k, v in resource.attributes.tags.items() %}
+    "{{ k }}" = "{{ v }}"
+{% endfor %}
+  }
+{% endif %}
+}
+{% endfor %}

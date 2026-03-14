@@ -1,0 +1,18 @@
+{% for resource in resources %}
+resource "aws_instance" "{{ resource.logical_name }}" {
+  ami           = "{{ resource.attributes.ami }}"
+  instance_type = "{{ resource.attributes.instance_type }}"
+{% if resource.attributes.get('vpc_security_group_ids') %}
+  vpc_security_group_ids = {{ resource.attributes.vpc_security_group_ids }}
+{% elif resource.dependencies %}
+  vpc_security_group_ids = [{% for dep in resource.dependencies %}aws_security_group.{{ dep }}.id{% if not loop.last %}, {% endif %}{% endfor %}]
+{% endif %}
+{% if resource.attributes.get('tags') %}
+  tags = {
+{% for k, v in resource.attributes.tags.items() %}
+    "{{ k }}" = "{{ v }}"
+{% endfor %}
+  }
+{% endif %}
+}
+{% endfor %}

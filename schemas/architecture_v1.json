@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://terraform-generator.example.com/schemas/architecture_v1.json",
+  "title": "Architecture",
+  "description": "Normalized architecture definition for Terraform Generator Service V1",
+  "type": "object",
+  "required": ["id", "provider", "resources"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Correlation ID for the processing pipeline"
+    },
+    "name": {
+      "type": "string",
+      "description": "Architecture name, from document or default"
+    },
+    "provider": {
+      "type": "string",
+      "enum": ["aws"],
+      "description": "Cloud provider (V1: aws only)"
+    },
+    "metadata": {
+      "$ref": "#/$defs/ArchitectureMetadata"
+    },
+    "resources": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/InfrastructureResource"
+      },
+      "description": "List of infrastructure resources"
+    }
+  },
+  "$defs": {
+    "ArchitectureMetadata": {
+      "type": "object",
+      "properties": {
+        "source_file": { "type": ["string", "null"] },
+        "parsed_at": { "type": "string", "format": "date-time" },
+        "version": { "type": "string" }
+      }
+    },
+    "InfrastructureResource": {
+      "type": "object",
+      "required": ["type", "logical_name", "attributes"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "aws_s3_bucket",
+            "aws_s3_bucket_versioning",
+            "aws_instance",
+            "aws_security_group",
+            "aws_vpc",
+            "aws_subnet"
+          ],
+          "description": "Terraform resource type (V1 allowed list)"
+        },
+        "logical_name": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "description": "Terraform resource logical name (e.g., main_bucket)"
+        },
+        "attributes": {
+          "type": "object",
+          "description": "Provider-specific resource attributes"
+        },
+        "dependencies": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": [],
+          "description": "Logical names of dependent resources"
+        }
+      }
+    }
+  }
+}

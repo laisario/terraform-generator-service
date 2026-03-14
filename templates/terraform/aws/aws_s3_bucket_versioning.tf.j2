@@ -1,0 +1,13 @@
+{% for resource in resources %}
+resource "aws_s3_bucket_versioning" "{{ resource.logical_name }}" {
+{% if resource.attributes.bucket is string and '.' in resource.attributes.bucket and resource.attributes.bucket.startswith('aws_') %}
+  bucket = {{ resource.attributes.bucket }}
+{% else %}
+  bucket = "{{ resource.attributes.bucket }}"
+{% endif %}
+
+  versioning_configuration {
+    status = "{{ resource.attributes.get('versioning_configuration', {}).get('status', 'Enabled') }}"
+  }
+}
+{% endfor %}

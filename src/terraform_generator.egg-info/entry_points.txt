@@ -1,0 +1,2 @@
+[console_scripts]
+terraform-generator = terraform_generator.main:main

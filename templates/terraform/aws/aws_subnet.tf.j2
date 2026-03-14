@@ -1,0 +1,14 @@
+{% for resource in resources %}
+resource "aws_subnet" "{{ resource.logical_name }}" {
+  vpc_id            = {{ resource.attributes.vpc_id }}
+  cidr_block        = "{{ resource.attributes.cidr_block }}"
+  availability_zone = "{{ resource.attributes.availability_zone }}"
+{% if resource.attributes.get('tags') %}
+  tags = {
+{% for k, v in resource.attributes.tags.items() %}
+    "{{ k }}" = "{{ v }}"
+{% endfor %}
+  }
+{% endif %}
+}
+{% endfor %}
