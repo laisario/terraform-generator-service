@@ -23,7 +23,8 @@ Use this checklist to track implementation progress. Check off items as they are
 - [ ] Define `ArchitectureMetadata` model (source_file, parsed_at, version)
 - [ ] Define domain exceptions in `domain/exceptions.py`
 
-### JSON Schema
+### JSON Schemas
+- [ ] Create `schemas/input_v1.json` (input contract: analise_entrada, vibes, recursos)
 - [ ] Create `schemas/architecture_v1.json`
 - [ ] Include all V1 resource types in enum: aws_s3_bucket, aws_s3_bucket_versioning, aws_instance, aws_security_group, aws_vpc, aws_subnet
 - [ ] Add `$defs` for InfrastructureResource and ArchitectureMetadata
@@ -36,40 +37,39 @@ Use this checklist to track implementation progress. Check off items as they are
 
 ---
 
-## Phase 2: Ingestion & Parsing
+## Phase 2: JSON Ingestion & Validation
 
 ### Ingestion
-- [ ] Implement `ingestion/loader.py` — load from file path
-- [ ] Implement content-based loading (string in, string out)
+- [ ] Implement `ingestion/loader.py` — load JSON from file path
+- [ ] Implement content-based loading (string in, parsed dict out)
 - [ ] Handle file-not-found errors with clear messages
-- [ ] Handle encoding errors (UTF-8)
+- [ ] Handle encoding errors (UTF-8) and JSON parse errors
 - [ ] Add optional file size limit (e.g., 1MB)
 
-### Parsing
-- [ ] Integrate Markdown parser (markdown-it-py or mistune)
-- [ ] Define block types: `Heading`, `CodeBlock`, `List` in `parsing/blocks.py`
-- [ ] Extract headings with level and text
-- [ ] Extract code blocks with language tag (terraform, hcl)
-- [ ] Unit test: sample MD → list of blocks
+### JSON Validation
+- [ ] Load `schemas/input_v1.json`
+- [ ] Validate incoming JSON against input schema
+- [ ] Reject malformed structure (missing `analise_entrada`, invalid `recursos`)
+- [ ] Return clear validation errors with path/field info
+- [ ] Unit test: valid JSON → validated payload; invalid JSON → error
 
 ---
 
-## Phase 3: Extraction
+## Phase 3: Service Analysis
 
-### Extraction Logic
-- [ ] Detect `terraform`/`hcl` code blocks
-- [ ] Parse `resource "type" "name"` pattern
-- [ ] Extract attributes (key = value) from HCL-like content
-- [ ] Produce raw requirement records (type, name, attributes)
-- [ ] Handle nested blocks (e.g., ingress rules)
-- [ ] Unit test: HCL block → raw resource record
+### Analysis Logic
+- [ ] Iterate over `vibe_economica.recursos` and `vibe_performance.recursos`
+- [ ] Interpret `servico` to map to Terraform resource type
+- [ ] Interpret `config` (string or object) into resource attributes
+- [ ] Produce analyzed resource list for normalization
+- [ ] Unit test: JSON with recursos → analyzed resource list
 
 ---
 
 ## Phase 4: Normalization & Validation
 
 ### Normalization
-- [ ] Map raw records to `InfrastructureResource`
+- [ ] Map analyzed resources to `InfrastructureResource`
 - [ ] Resolve `dependencies` from references (e.g., `aws_security_group.web_sg`)
 - [ ] Detect and reject circular dependencies
 - [ ] Build `Architecture` root with metadata
@@ -110,22 +110,38 @@ Use this checklist to track implementation progress. Check off items as they are
 
 ### Event Payloads
 - [ ] Define `events/payloads.py` — dataclasses for all event payloads
-- [ ] `IngestRequestedPayload` (file_path, correlation_id)
-- [ ] `ParsedPayload`, `ExtractedPayload`, `NormalizedPayload`
+- [ ] `IngestRequestedPayload` (file_path, content, correlation_id)
+- [ ] `InputValidatedPayload`, `ServicesAnalyzedPayload`, `NormalizedPayload`
 - [ ] `ValidatedPayload` (valid, errors, warnings)
 - [ ] `TemplatesSelectedPayload`, `TerraformGeneratedPayload`
 - [ ] `ProcessingCompletedPayload`, `ProcessingFailedPayload`
 
 ### Synchronous Pipeline
 - [ ] Implement orchestrator that chains all stages
-- [ ] Ingest → Parse → Extract → Normalize → Validate → Select → Generate → Output
+- [ ] Ingest → JSON Validate → Service Analysis → Normalize → Validate → Select → Generate → Output
 - [ ] Emit `architecture.processing.completed` on success
 - [ ] Emit `architecture.processing.failed` on any stage error
 - [ ] Pass `correlation_id` through entire pipeline
 
 ### Output
-- [ ] Write generated Terraform files to `output/{correlation_id}/`
+- [ ] Write generated Terraform files to `output/{job_id}/` (directory per job)
 - [ ] Optional: publish events to stdout or log
+
+---
+
+## Phase 6b: Artifact Storage (Environment-Based)
+
+Reference: [ARTIFACT_STORAGE.md](./ARTIFACT_STORAGE.md)
+
+- [ ] Add `ENVIRONMENT` to config (from `.env`); default `dev`
+- [ ] Implement storage handler: branch on `ENVIRONMENT`
+- [ ] **Dev:** Write to `outputs/{job_id}/`; no upload
+- [ ] **Production:** Add S3-compatible client (boto3), upload all files in `outputs/{job_id}/`
+- [ ] Object key format: `outputs/{job_id}/{file_name}` in bucket `vibe-cloud`
+- [ ] Upload only when `ENVIRONMENT=production`, after successful local write
+- [ ] On failure: emit `architecture.artifacts.upload.failed` with `partial_uploads`; job marked failed
+- [ ] Add logging for storage strategy, upload start, per-file, completion, failure
+- [ ] Unit tests: dev path, production path with mocked S3
 
 ---
 
@@ -142,15 +158,16 @@ Use this checklist to track implementation progress. Check off items as they are
 ## Phase 8: Testing & Polish
 
 ### Unit Tests
-- [ ] `tests/unit/test_parsing.py`
-- [ ] `tests/unit/test_extraction.py`
+- [ ] `tests/unit/test_ingestion.py`
+- [ ] `tests/unit/test_input_validation.py`
+- [ ] `tests/unit/test_service_analysis.py`
 - [ ] `tests/unit/test_normalization.py`
 - [ ] `tests/unit/test_validation.py`
 - [ ] `tests/unit/test_generator.py`
 
 ### Integration Tests
-- [ ] `tests/integration/test_pipeline.py` — MD file → Terraform files
-- [ ] Sample fixture: `tests/fixtures/sample_architectures/web_app.md`
+- [ ] `tests/integration/test_pipeline.py` — JSON file → Terraform files
+- [ ] Sample fixtures: `tests/fixtures/sample_inputs/*.json`
 
 ### Documentation
 - [ ] README with quick start
@@ -161,7 +178,7 @@ Use this checklist to track implementation progress. Check off items as they are
 
 ## Definition of Done (V1)
 
-- [ ] End-to-end: Markdown file in → Terraform files out
+- [ ] End-to-end: JSON file in → Terraform files out
 - [ ] All six V1 AWS resource types supported
 - [ ] JSON Schema validation passes for valid input
 - [ ] Validation errors block pipeline with clear messages

@@ -26,6 +26,9 @@ src/terraform_generator/normalization/resolver.py
 src/terraform_generator/parsing/__init__.py
 src/terraform_generator/parsing/blocks.py
 src/terraform_generator/parsing/markdown_parser.py
+src/terraform_generator/storage/__init__.py
+src/terraform_generator/storage/handler.py
+src/terraform_generator/storage/uploader.py
 src/terraform_generator/terraform/__init__.py
 src/terraform_generator/terraform/generator.py
 src/terraform_generator/terraform/template_selector.py

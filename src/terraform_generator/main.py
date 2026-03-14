@@ -15,12 +15,12 @@ from terraform_generator.events.payloads import (
 def main() -> None:
     """CLI entry point."""
     parser = argparse.ArgumentParser(
-        description="Parse Markdown architecture definitions and generate Terraform files"
+        description="Process JSON infrastructure definitions and generate Terraform files"
     )
     parser.add_argument(
         "input",
         nargs="?",
-        help="Path to Markdown architecture file",
+        help="Path to JSON input file",
     )
     parser.add_argument(
         "-o",
@@ -31,7 +31,7 @@ def main() -> None:
     parser.add_argument(
         "--stdin",
         action="store_true",
-        help="Read Markdown from stdin instead of file",
+        help="Read JSON from stdin instead of file",
     )
     args = parser.parse_args()
 

@@ -28,3 +28,4 @@ class ProcessingFailedPayload:
     correlation_id: str
     stage: str
     error: str
+    partial_uploads: list[str] | None = None  # For artifact_upload failures

@@ -1,6 +1,6 @@
 # Terraform Generator Service
 
-A Python event-driven service that receives architecture definitions in Markdown files, parses them into structured infrastructure requirements, normalizes them into a JSON-Schema-aligned internal representation, and generates Terraform configuration files from AWS-oriented templates.
+A Python event-driven service that receives **JSON input** describing infrastructure options (vibes), validates the structure and requested services, normalizes the content into a JSON-Schema-aligned internal representation, and generates Terraform configuration files from AWS-oriented templates.
 
 **V1 does not execute Terraform** — it produces ready-to-use `.tf` files for external tooling (CI/CD, Terraform Cloud, or manual `terraform apply`).
 
@@ -12,13 +12,13 @@ A Python event-driven service that receives architecture definitions in Markdown
 # Install
 pip install -e .
 
-# Process an architecture file
-terraform-generator path/to/architecture.md
+# Process a JSON input file
+terraform-generator path/to/input.json
 # or
-python3 -m terraform_generator.main path/to/architecture.md
+python3 -m terraform_generator.main path/to/input.json
 
 # Or read from stdin
-cat architecture.md | terraform-generator --stdin
+cat input.json | terraform-generator --stdin
 
 # Output: Terraform files in output/{correlation_id}/
 ```
@@ -38,7 +38,7 @@ cat architecture.md | terraform-generator --stdin
 
 ## V1 Scope
 
-- **In:** Markdown architecture files (`.md`)
+- **In:** JSON input files (`.json`) with `analise_entrada` and optional `vibe_economica`/`vibe_performance` blocks containing `recursos`
 - **Out:** Terraform files (`.tf`) for AWS resources
 - **Supported resources:** `aws_s3_bucket`, `aws_s3_bucket_versioning`, `aws_instance`, `aws_security_group`, `aws_vpc`, `aws_subnet`
 
@@ -47,7 +47,7 @@ cat architecture.md | terraform-generator --stdin
 ## Architecture Overview
 
 ```
-Markdown → Parse → Extract → Normalize → Validate → Template Select → Generate → Terraform Files
+JSON Input → Validate Structure → Analyze Services → Normalize → Validate Domain → Generate → Terraform Files
 ```
 
 See [docs/PDD.md](docs/PDD.md) for full architecture, event flow, and domain model.
@@ -56,7 +56,7 @@ See [docs/PDD.md](docs/PDD.md) for full architecture, event flow, and domain mod
 
 ## Project Status
 
-**Status:** V1 implementation complete. Markdown → Terraform pipeline working.
+**Status:** V1 migration in progress. Input contract changed from Markdown to JSON. Implementation updates pending.
 
 ---
 

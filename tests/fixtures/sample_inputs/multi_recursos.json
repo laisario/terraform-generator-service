@@ -1,0 +1,27 @@
+{
+  "analise_entrada": "Multi-resource architecture with S3, EC2, security groups",
+  "vibe_economica": {
+    "descricao": "Full stack economy",
+    "custo_estimado": "~$50/month",
+    "recursos": [
+      { "servico": "aws_s3_bucket", "config": { "bucket": "assets", "tags": {} } },
+      { "servico": "aws_s3_bucket", "config": { "bucket": "logs", "tags": {} } },
+      {
+        "servico": "aws_security_group",
+        "config": {
+          "name": "app-sg",
+          "description": "App security",
+          "ingress": [{ "from_port": 8080, "to_port": 8080, "protocol": "tcp", "cidr_blocks": ["10.0.0.0/16"] }]
+        }
+      },
+      {
+        "servico": "aws_instance",
+        "config": {
+          "ami": "ami-0c55b159cbfafe1f0",
+          "instance_type": "t3.micro",
+          "tags": { "Role": "app" }
+        }
+      }
+    ]
+  }
+}

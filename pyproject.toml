@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "terraform-generator"
 version = "0.1.0"
-description = "Parse Markdown architecture definitions and generate AWS Terraform files"
+description = "Process JSON infrastructure definitions and generate AWS Terraform files"
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
@@ -15,7 +15,7 @@ dependencies = [
     "pydantic-settings>=2.0",
     "jinja2>=3.1",
     "jsonschema>=4.20",
-    "markdown-it-py>=3.0",
+    "boto3>=1.28",
 ]
 
 [project.optional-dependencies]

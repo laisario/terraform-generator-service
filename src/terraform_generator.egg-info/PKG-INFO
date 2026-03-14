@@ -11,6 +11,7 @@ Requires-Dist: pydantic-settings>=2.0
 Requires-Dist: jinja2>=3.1
 Requires-Dist: jsonschema>=4.20
 Requires-Dist: markdown-it-py>=3.0
+Requires-Dist: boto3>=1.28
 Provides-Extra: dev
 Requires-Dist: pytest>=7.0; extra == "dev"
 Requires-Dist: pytest-asyncio>=0.21; extra == "dev"
@@ -81,3 +82,4 @@ See [docs/PDD.md](docs/PDD.md) for full architecture, event flow, and domain mod
 ## License
 
 (Add license when applicable)
+# terraform-generator-service

@@ -1,9 +1,24 @@
 """Domain models for the Terraform Generator Service."""
 
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
 from pydantic import BaseModel, Field
+
+
+@dataclass
+class RawRequirement:
+    """Raw resource requirement before normalization (from JSON analysis or extraction)."""
+
+    type: str
+    logical_name: str
+    attributes: dict[str, Any] | None = None
+    raw_content: str = ""
+
+    def __post_init__(self) -> None:
+        if self.attributes is None:
+            self.attributes = {}
 
 
 class ArchitectureMetadata(BaseModel):

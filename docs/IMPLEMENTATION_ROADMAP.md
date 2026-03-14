@@ -8,11 +8,11 @@
 ## Concise Implementation Roadmap
 
 ```
-Phase 1: Foundation        →  Domain models, schema, config, project setup
-Phase 2: Parsing           →  Markdown → structured blocks
-Phase 3: Extraction       →  Blocks → raw requirements
-Phase 4: Normalization     →  Raw → domain model + dependency resolution
-Phase 5: Validation        →  JSON Schema + custom rules
+Phase 1: Foundation        →  Domain models, schemas (input + domain), config, project setup
+Phase 2: JSON Ingestion    →  Load JSON, validate against input_v1.json
+Phase 3: Service Analysis  →  Analyze recursos; map servico/config to resource list
+Phase 4: Normalization     →  Analyzed resources → domain model + dependency resolution
+Phase 5: Validation        →  Domain JSON Schema + custom rules
 Phase 6: Terraform Gen     →  Templates, selector, generator, writer
 Phase 7: Pipeline          →  Synchronous orchestration (no broker)
 Phase 8: Event Bus (opt)   →  Redis/RabbitMQ consumer + publisher
@@ -28,10 +28,10 @@ Phase 9: Polish            →  Tests, docs, samples
 ```
 Phase 1 (Foundation)
     │
-    ├──► Phase 2 (Parsing) ──► Phase 3 (Extraction)
-    │                              │
-    │                              ▼
-    │                         Phase 4 (Normalization)
+    ├──► Phase 2 (JSON Ingestion) ──► Phase 3 (Service Analysis)
+    │                                      │
+    │                                      ▼
+    │                                 Phase 4 (Normalization)
     │                              │
     │                              ▼
     │                         Phase 5 (Validation)
@@ -51,56 +51,43 @@ Phase 1 (Foundation)
 
 | Milestone | Deliverable | Definition of Done |
 |-----------|-------------|--------------------|
-| **M1: Foundation** | Project runs, domain + schema exist | `python -m terraform_generator --help` works; schema validates sample JSON |
-| **M2: Parse** | Markdown → blocks | Unit test: sample MD → list of blocks with headings/code |
-| **M3: Extract** | Blocks → raw requirements | Unit test: HCL block → raw resource record |
-| **M4: Normalize** | Raw → domain model | Unit test: raw records → `Architecture` with resolved deps |
+| **M1: Foundation** | Project runs, domain + schemas exist | `python -m terraform_generator --help` works; input + domain schemas validate sample JSON |
+| **M2: JSON Ingestion** | JSON load + validate | Unit test: sample JSON → validated payload; invalid JSON → clear error |
+| **M3: Service Analysis** | Recursos → resource list | Unit test: JSON with recursos → analyzed resource list |
+| **M4: Normalize** | Analyzed → domain model | Unit test: analyzed resources → `Architecture` with resolved deps |
 | **M5: Validate** | Schema + rules | Unit test: valid/invalid models → correct pass/fail |
 | **M6: Generate** | Terraform files | Unit test: domain model → correct `.tf` output |
-| **M7: Pipeline** | End-to-end sync | Integration test: MD file → Terraform files on disk |
+| **M7: Pipeline** | End-to-end sync | Integration test: JSON file → Terraform files on disk |
 | **M8: Event Bus** | Async processing | Consumer processes `ingest.requested` → emits `completed` |
 
 ---
 
 ## Suggested First Feature to Implement
 
-**Feature:** *Markdown Ingestion + Parsing to Structured Blocks*
+**Feature:** *JSON Ingestion + Input Validation*
 
 **Why first:**
-- No dependencies on extraction, normalization, or Terraform
-- Validates project setup and domain boundaries
-- Produces a concrete, testable output (blocks)
-- Unblocks extraction (Phase 3)
+- No dependencies on service analysis, normalization, or Terraform
+- Validates project setup and input contract
+- Produces a concrete, testable output (validated payload)
+- Unblocks service analysis (Phase 3)
 
 **Scope:**
 1. Project setup (`pyproject.toml`, `src/terraform_generator`, ruff)
-2. `ingestion.loader`: Load Markdown from file path or string
-3. `parsing.markdown_parser`: Parse MD to list of blocks (Heading, CodeBlock)
-4. Unit tests: given `sample.md`, assert block types and content
+2. `ingestion.loader`: Load JSON from file path or string
+3. `input.validator`: Validate against `schemas/input_v1.json`
+4. Unit tests: given `sample_inputs/web_app.json`, assert validation passes; given invalid JSON, assert clear error
 
 **Acceptance criteria:**
-- [ ] `Loader.load_from_path("architectures/sample.md")` returns raw Markdown string
-- [ ] `MarkdownParser.parse(md)` returns `List[Block]` with correct `BlockType` and content
-- [ ] Code block with `terraform` language is correctly identified
+- [ ] `Loader.load_from_path("fixtures/sample_inputs/web_app.json")` returns parsed JSON dict
+- [ ] `InputValidator.validate(data)` returns validated payload when structure is correct
+- [ ] Invalid JSON (missing `analise_entrada`, malformed `recursos`) raises validation error with clear message
 
-**Sample input for first feature:**
+**Sample input for first feature:** See `tests/fixtures/sample_inputs/web_app.json`
 
-```markdown
-# My Architecture
-
-## S3
-
-```terraform
-resource "aws_s3_bucket" "main" {
-  bucket = "my-bucket"
-}
-```
-```
-
-**Expected parsed output (conceptual):**
-- Block 1: Heading(level=1, text="My Architecture")
-- Block 2: Heading(level=2, text="S3")
-- Block 3: CodeBlock(lang="terraform", content="resource \"aws_s3_bucket\" ...")
+**Expected validated output (conceptual):**
+- `analise_entrada` present
+- `vibe_economica.recursos` and/or `vibe_performance.recursos` as list of `{servico, config}` objects
 
 ---
 
@@ -149,10 +136,10 @@ When V1 is complete, the following artifacts should exist:
 - [ ] src/terraform_generator/ — Python package with all stages
 - [ ] templates/terraform/aws/ — Jinja2 templates for V1 resource types
 - [ ] tests/ — Unit and integration tests
-- [ ] Sample architecture fixture (e.g., tests/fixtures/sample_architectures/web_app.md)
+- [ ] Sample input fixtures (e.g., tests/fixtures/sample_inputs/web_app.json)
 
 ### Definition of Done
-- End-to-end: Markdown file in → Terraform files out
+- End-to-end: JSON file in → Terraform files out
 - All six V1 AWS resource types supported
 - JSON Schema validation enforced
 - No Terraform execution

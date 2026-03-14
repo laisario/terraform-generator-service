@@ -1,0 +1,53 @@
+{
+  "analise_entrada": "Web application with static assets, security group, and compute",
+  "vibe_economica": {
+    "descricao": "Cost-optimized web app: single S3 bucket, minimal EC2",
+    "custo_estimado": "~$25/month",
+    "recursos": [
+      {
+        "servico": "aws_s3_bucket",
+        "config": {
+          "bucket": "my-app-assets",
+          "tags": { "Environment": "production", "Project": "web-app" }
+        }
+      },
+      {
+        "servico": "aws_security_group",
+        "config": {
+          "name": "web-sg",
+          "description": "Security group for web servers",
+          "ingress": [{ "from_port": 80, "to_port": 80, "protocol": "tcp", "cidr_blocks": ["0.0.0.0/0"] }]
+        }
+      },
+      {
+        "servico": "aws_instance",
+        "config": {
+          "ami": "ami-0c55b159cbfafe1f0",
+          "instance_type": "t3.micro",
+          "tags": { "Role": "web" }
+        }
+      }
+    ]
+  },
+  "vibe_performance": {
+    "descricao": "Performance-optimized: larger instance, additional S3",
+    "custo_estimado": "~$80/month",
+    "recursos": [
+      {
+        "servico": "aws_s3_bucket",
+        "config": {
+          "bucket": "my-app-assets-perf",
+          "tags": { "Environment": "production", "Project": "web-app", "Tier": "performance" }
+        }
+      },
+      {
+        "servico": "aws_instance",
+        "config": {
+          "ami": "ami-0c55b159cbfafe1f0",
+          "instance_type": "t3.small",
+          "tags": { "Role": "web", "Tier": "performance" }
+        }
+      }
+    ]
+  }
+}

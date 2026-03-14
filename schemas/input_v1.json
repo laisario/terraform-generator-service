@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://terraform-generator.example.com/schemas/input_v1.json",
+  "title": "Terraform Generator Input",
+  "description": "Input contract for Terraform Generator Service — JSON describing infrastructure options (vibes) and requested resources",
+  "type": "object",
+  "required": ["analise_entrada"],
+  "properties": {
+    "analise_entrada": {
+      "type": "string",
+      "description": "Summary of what was detected/analyzed from the original request"
+    },
+    "vibe_economica": {
+      "type": "object",
+      "description": "Cost-optimized infrastructure option",
+      "properties": {
+        "descricao": { "type": "string" },
+        "custo_estimado": { "type": "string" },
+        "recursos": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/Recurso" }
+        }
+      }
+    },
+    "vibe_performance": {
+      "type": "object",
+      "description": "Performance-optimized infrastructure option",
+      "properties": {
+        "descricao": { "type": "string" },
+        "custo_estimado": { "type": "string" },
+        "recursos": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/Recurso" }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "Recurso": {
+      "type": "object",
+      "required": ["servico"],
+      "properties": {
+        "servico": {
+          "type": "string",
+          "description": "Service/resource identifier (e.g., aws_s3_bucket, aws_instance)"
+        },
+        "config": {
+          "type": ["string", "object"],
+          "description": "Configuration for the service — string or structured object"
+        }
+      }
+    }
+  }
+}

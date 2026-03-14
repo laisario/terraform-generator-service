@@ -6,15 +6,11 @@ class TerraformGeneratorError(Exception):
 
 
 class IngestionError(TerraformGeneratorError):
-    """Error during Markdown ingestion (file not found, encoding, etc.)."""
+    """Error during ingestion (file not found, encoding, JSON parse, etc.)."""
 
 
-class ParsingError(TerraformGeneratorError):
-    """Error during Markdown parsing."""
-
-
-class ExtractionError(TerraformGeneratorError):
-    """Error during infrastructure requirement extraction."""
+class InputValidationError(TerraformGeneratorError):
+    """Error during JSON input validation (schema, structure, required fields)."""
 
 
 class NormalizationError(TerraformGeneratorError):
@@ -27,3 +23,7 @@ class ValidationError(TerraformGeneratorError):
 
 class GenerationError(TerraformGeneratorError):
     """Error during Terraform file generation."""
+
+
+class UploadError(TerraformGeneratorError):
+    """Error during artifact upload to object storage."""

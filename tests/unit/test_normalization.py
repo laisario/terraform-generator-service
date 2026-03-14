@@ -2,8 +2,7 @@
 
 import pytest
 
-from terraform_generator.domain.models import Architecture
-from terraform_generator.extraction.extractor import RawRequirement
+from terraform_generator.domain.models import Architecture, RawRequirement
 from terraform_generator.normalization.normalizer import Normalizer
 from terraform_generator.domain.exceptions import NormalizationError
 

@@ -8,9 +8,8 @@ from terraform_generator.domain.models import (
     Architecture,
     ArchitectureMetadata,
     InfrastructureResource,
+    RawRequirement,
 )
-
-from terraform_generator.extraction.extractor import RawRequirement
 from terraform_generator.normalization.resolver import (
     detect_cycle,
     resolve_dependencies,

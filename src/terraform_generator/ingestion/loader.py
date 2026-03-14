@@ -1,5 +1,6 @@
-"""Load Markdown from file path or content."""
+"""Load JSON input from file path or content."""
 
+import json
 from pathlib import Path
 
 from terraform_generator.config import Settings
@@ -7,13 +8,13 @@ from terraform_generator.domain.exceptions import IngestionError
 
 
 class Loader:
-    """Load Markdown content from file path or raw string."""
+    """Load JSON input from file path or raw string."""
 
     def __init__(self, settings: Settings | None = None) -> None:
         self.settings = settings or Settings()
 
-    def load_from_path(self, file_path: str | Path) -> str:
-        """Load Markdown from a file path."""
+    def load_from_path(self, file_path: str | Path) -> dict:
+        """Load and parse JSON from a file path."""
         path = Path(file_path)
         if not path.exists():
             raise IngestionError(f"File not found: {path}")
@@ -30,8 +31,20 @@ class Loader:
                 f"File exceeds size limit ({self.settings.max_file_size_bytes} bytes): {path}"
             )
 
-        return content
+        return self._parse_json(content, str(path))
 
-    def load_from_content(self, content: str) -> str:
-        """Load Markdown from raw string (passthrough)."""
-        return content
+    def load_from_content(self, content: str) -> dict:
+        """Load and parse JSON from raw string."""
+        return self._parse_json(content, source="<content>")
+
+    def _parse_json(self, content: str, source: str) -> dict:
+        """Parse JSON string to dict. Raises IngestionError on parse failure."""
+        try:
+            data = json.loads(content)
+        except json.JSONDecodeError as e:
+            raise IngestionError(f"Invalid JSON in {source}: {e}") from e
+
+        if not isinstance(data, dict):
+            raise IngestionError(f"Expected JSON object, got {type(data).__name__}")
+
+        return data

@@ -1,0 +1,13 @@
+{
+  "analise_entrada": "Economy-focused deployment",
+  "vibe_economica": {
+    "descricao": "Minimal cost setup",
+    "custo_estimado": "~$15/month",
+    "recursos": [
+      {
+        "servico": "aws_s3_bucket",
+        "config": { "bucket": "economy-bucket", "tags": { "Tier": "economy" } }
+      }
+    ]
+  }
+}

@@ -2,7 +2,7 @@
 
 **Purpose:** This guide helps future Cursor prompts implement the Terraform Generator Service feature-by-feature without losing architectural consistency.
 
-**Reference documents:** [PDD.md](./PDD.md), [IMPLEMENTATION_ROADMAP.md](./IMPLEMENTATION_ROADMAP.md), [DEVELOPMENT_CHECKLIST.md](./DEVELOPMENT_CHECKLIST.md)
+**Reference documents:** [PDD.md](./PDD.md), [ARTIFACT_STORAGE.md](./ARTIFACT_STORAGE.md), [IMPLEMENTATION_ROADMAP.md](./IMPLEMENTATION_ROADMAP.md), [DEVELOPMENT_CHECKLIST.md](./DEVELOPMENT_CHECKLIST.md)
 
 ---
 
@@ -14,65 +14,65 @@ When implementing a feature, **cite the relevant PDD section** and follow the pr
 
 ## Recommended Implementation Order
 
-1. **Foundation** — Domain models, schema, config (Phase 1)
-2. **Ingestion + Parsing** — First feature (see below)
-3. **Extraction** — Raw requirements from blocks
+1. **Foundation** — Domain models, schemas (input + domain), config (Phase 1)
+2. **JSON Ingestion + Validation** — First feature (see below)
+3. **Service Analysis** — Analyze recursos; map servico/config to resource list
 4. **Normalization** — Domain model + dependency resolution
-5. **Validation** — JSON Schema + custom rules
+5. **Validation** — Domain JSON Schema + custom rules
 6. **Terraform Generation** — Templates, selector, generator
 7. **Pipeline** — Synchronous orchestration
-8. **Event Bus** — Optional; defer if sync API suffices
+8. **Artifact Storage** — Environment-based: local only (dev) or S3 only (production)
+9. **Event Bus** — Optional; defer if sync API suffices
 
 ---
 
 ## Suggested First Feature to Implement
 
-**Feature:** *Markdown Ingestion + Parsing to Structured Blocks*
+**Feature:** *JSON Ingestion + Input Validation*
 
 **Prompt template:**
 
 ```
-Implement the Markdown ingestion and parsing stage for the Terraform Generator Service.
+Implement the JSON ingestion and input validation stage for the Terraform Generator Service.
 
-Reference: docs/PDD.md (Architecture, Parsing, Markdown Input Patterns)
+Reference: docs/PDD.md (Architecture, JSON Input Contract)
 Reference: docs/IMPLEMENTATION_ROADMAP.md (Suggested First Feature)
 
 Requirements:
-1. Create ingestion/loader.py: load Markdown from file path or string
-2. Create parsing/markdown_parser.py: parse MD to list of blocks (Heading, CodeBlock)
-3. Define parsing/blocks.py: Block types (Heading, CodeBlock) with level/lang/content
-4. Use markdown-it-py or mistune for parsing
-5. Add unit tests in tests/unit/test_parsing.py
+1. Create ingestion/loader.py: load JSON from file path or string
+2. Create input/validator.py: validate against schemas/input_v1.json
+3. Reject malformed structure (missing analise_entrada, invalid recursos)
+4. Return clear validation errors with path/field info
+5. Add unit tests in tests/unit/test_ingestion.py and test_input_validation.py
 
 Acceptance criteria:
-- Loader.load_from_path("path/to/file.md") returns raw Markdown string
-- MarkdownParser.parse(md) returns List[Block] with correct BlockType and content
-- Code block with "terraform" language is correctly identified
+- Loader.load_from_path("path/to/input.json") returns parsed JSON dict
+- InputValidator.validate(data) returns validated payload when structure is correct
+- Invalid JSON raises validation error with clear message
 
-Sample input: See PDD "Example 1: Code Block Style"
+Sample input: See tests/fixtures/sample_inputs/web_app.json
 ```
 
 ---
 
 ## Feature-Specific Prompt Templates
 
-### Extraction
+### Service Analysis
 
 ```
-Implement the extraction stage for the Terraform Generator Service.
+Implement the service analysis stage for the Terraform Generator Service.
 
-Reference: docs/PDD.md (Extraction, Markdown Input Patterns)
+Reference: docs/PDD.md (Service Analysis, JSON Input Contract)
 Reference: docs/DEVELOPMENT_CHECKLIST.md (Phase 3)
 
 Requirements:
-1. Create extraction/extractor.py: extract raw requirements from parsed blocks
-2. Detect terraform/hcl code blocks
-3. Parse resource "type" "name" pattern and attributes
-4. Produce raw requirement records (type, logical_name, attributes)
-5. Add extraction/patterns.py for regex/pattern definitions
-6. Add unit tests in tests/unit/test_extraction.py
+1. Create input/analyzer.py: analyze vibe_economica.recursos and vibe_performance.recursos
+2. Interpret servico to map to Terraform resource type
+3. Interpret config (string or object) into resource attributes
+4. Produce analyzed resource list for normalization
+5. Add unit tests in tests/unit/test_service_analysis.py
 
-V1 focus: HCL code block style only. Do not implement list-style extraction yet.
+V1 focus: Map servico to V1 allowed types; reject unsupported services.
 ```
 
 ### Normalization
@@ -140,13 +140,36 @@ Reference: docs/DEVELOPMENT_CHECKLIST.md (Phase 6)
 
 Requirements:
 1. Create events/payloads.py: dataclasses for all event payloads
-2. Create orchestrator that chains: ingest → parse → extract → normalize → validate → select → generate → output
+2. Create orchestrator that chains: ingest → JSON validate → service analysis → normalize → validate → select → generate → output
 3. On validation failure: emit processing.failed, stop
-4. On success: write Terraform files to output/{correlation_id}/, emit processing.completed
+4. On success: persist Terraform files (local or S3 per ENVIRONMENT), emit processing.completed
 5. Pass correlation_id through entire pipeline
-6. Add integration test: MD file → Terraform files on disk
+6. Add integration test: JSON file → Terraform files on disk
 
 Do not integrate event broker yet. Use in-memory/synchronous flow.
+```
+
+### Artifact Storage (Environment-Based Persistence)
+
+```
+Implement the artifact storage for the Terraform Generator Service.
+
+Reference: docs/ARTIFACT_STORAGE.md (full specification)
+Reference: docs/PDD.md (Artifact Storage, Event Flow)
+
+Requirements:
+1. Add ENVIRONMENT to config (from .env); default dev if unset
+2. Create storage handler that branches on ENVIRONMENT:
+   - dev: write to outputs/{job_id}/; no upload
+   - production: write locally, then upload all files to Cloudflare
+3. Production upload: use boto3 with S3_API from .env; bucket vibe-cloud, prefix outputs/
+4. Object key format: outputs/{job_id}/{file_name}
+5. Upload occurs ONLY when ENVIRONMENT=production, AFTER successful local write
+6. On upload failure: emit architecture.artifacts.upload.failed with partial_uploads; job marked failed
+7. Add logging: storage strategy, upload start, per-file success, completion, failure
+8. Add unit tests: dev path (no upload), production path (mock S3)
+
+Do NOT change bucket name (vibe-cloud) or prefix (outputs/).
 ```
 
 ---
@@ -157,7 +180,7 @@ When implementing, **always**:
 
 - **Do not** add Terraform execution (plan, apply, destroy)
 - **Do not** support non-AWS providers in V1
-- **Do not** couple the parser to Terraform generation — normalized output is template-agnostic
+- **Do not** couple input handling to Terraform generation — normalized output is template-agnostic
 - **Do** use the exact event names from PDD (e.g., `architecture.ingest.requested`)
 - **Do** use the exact module/package names from PDD folder structure
 - **Do** limit V1 to the six AWS resource types: aws_s3_bucket, aws_s3_bucket_versioning, aws_instance, aws_security_group, aws_vpc, aws_subnet
@@ -172,7 +195,8 @@ When implementing, **always**:
 | JSON Schema | `schemas/architecture_v1.json` |
 | Event payloads | `src/terraform_generator/events/payloads.py` |
 | Config | `src/terraform_generator/config.py` |
-| Sample input | `tests/fixtures/sample_architectures/` |
+| Sample input | `tests/fixtures/sample_inputs/` |
+| Artifact storage | `docs/ARTIFACT_STORAGE.md` |
 
 ---
 

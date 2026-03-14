@@ -1,6 +1,6 @@
 # Terraform Generator Service — Prompt-Driven Development Document
 
-**Version:** 1.0  
+**Version:** 2.0  
 **Status:** Planning  
 **Last Updated:** 2025-03-14
 
@@ -8,24 +8,25 @@
 
 ## Overview
 
-The **Terraform Generator Service** is a Python event-driven backend service that ingests architecture definitions written in Markdown, parses them into structured infrastructure requirements, normalizes them into a JSON-Schema-aligned internal representation, validates the result, and generates Terraform configuration files from AWS-oriented templates.
+The **Terraform Generator Service** is a Python event-driven backend service that receives **JSON input** describing infrastructure options (vibes), validates the structure and requested services, normalizes the content into a JSON-Schema-aligned internal representation, and generates Terraform configuration files from AWS-oriented templates.
 
 The service does **not** execute Terraform. It produces ready-to-use `.tf` files that can be applied by external tooling (e.g., CI/CD, Terraform Cloud, or manual `terraform apply`).
 
 ### Service Purpose (One-Liner)
 
-*Parse Markdown architecture definitions → normalize into validated JSON-Schema-aligned domain model → generate AWS Terraform files from templates.*
+*Receive JSON infrastructure definitions (vibe_economica, vibe_performance) → validate structure and requested services → normalize into domain model → generate AWS Terraform files from templates.*
 
 ---
 
 ## Objective
 
-**Primary goal:** Build a Python event-driven service that receives architecture definitions in Markdown files, parses the infrastructure requirements, normalizes them into a JSON-Schema-aligned internal representation, and generates Terraform files from AWS-oriented templates.
+**Primary goal:** Build a Python event-driven service that receives **JSON files** as input, validates the JSON structure and requested services, analyzes which Terraform resources should be created, applies validation rules, normalizes into the internal domain model, and generates Terraform files from AWS-oriented templates.
 
 **Success criteria for V1:**
-- Markdown architecture files can be ingested and parsed
-- Parsed content is normalized into a provider-aware domain model
-- Normalized output validates against a defined JSON Schema
+- JSON input files can be ingested and validated against input schema
+- Requested services/resources are analyzed from `vibe_economica.recursos` and `vibe_performance.recursos`
+- Validation rules determine which services are supported and configs are valid
+- Normalized output validates against the internal domain schema
 - Terraform files are generated from templates for supported AWS resource types
 - The pipeline is event-driven with clear stage boundaries
 
@@ -35,11 +36,12 @@ The service does **not** execute Terraform. It produces ready-to-use `.tf` files
 
 | In Scope | Description |
 |----------|-------------|
-| Markdown ingestion | Accept `.md` files as input (file path or content) |
-| Markdown parsing | Extract infrastructure-related sections and blocks |
-| Requirement extraction | Identify AWS resource types, names, and attributes from parsed content |
-| Normalization | Convert extracted data into internal domain model |
-| JSON Schema validation | Validate normalized output against schema |
+| JSON ingestion | Accept `.json` files as input (file path or content) |
+| JSON schema validation | Validate input structure against `schemas/input_v1.json` |
+| Service/resource analysis | Analyze `recursos` from vibes; interpret `servico` and `config` |
+| Business validation | Validate requested services against supported types; validate configs |
+| Normalization | Convert validated JSON into internal domain model |
+| Domain schema validation | Validate normalized output against `schemas/architecture_v1.json` |
 | Terraform template selection | Map domain model entities to template identifiers |
 | Terraform file generation | Render `.tf` files from Jinja2 templates |
 | Event-driven flow | Process through discrete stages with event exchange |
@@ -64,14 +66,14 @@ The service does **not** execute Terraform. It produces ready-to-use `.tf` files
 
 ## Assumptions
 
-1. **Input format:** Architecture descriptions follow a predictable Markdown structure (headings, code blocks, lists) that can be parsed programmatically.
+1. **Input format:** The service receives **JSON** describing infrastructure options. The JSON contains `analise_entrada` and optionally `vibe_economica` and/or `vibe_performance`, each with `recursos` listing requested services and configs.
 2. **AWS focus:** All V1 resources map to AWS provider (`hashicorp/aws`); no multi-provider logic.
 3. **Event broker:** An event bus (e.g., Redis Streams, RabbitMQ, or SQS) is available; exact choice is configurable.
 4. **Python version:** Python 3.11+ for type hints and modern syntax.
 5. **Terraform version:** Generated output targets Terraform 1.x and AWS provider 5.x.
 6. **Single-tenant processing:** Each event represents one architecture file; no batching of multiple files per event.
 7. **Idempotency:** Re-processing the same input yields the same output (deterministic).
-8. **No secrets in Markdown:** Sensitive values (e.g., API keys) are not embedded in architecture files; they are injected at apply time.
+8. **No secrets in JSON:** Sensitive values (e.g., API keys) are not embedded in input JSON; they are injected at apply time.
 
 ---
 
@@ -79,48 +81,60 @@ The service does **not** execute Terraform. It produces ready-to-use `.tf` files
 
 ### High-Level Stages
 
-The system is organized into eight conceptual stages, each with clear inputs and outputs:
+The system is organized into seven conceptual stages, each with clear inputs and outputs:
 
 ```
-┌─────────────────┐ ┌─────────────────┐ ┌─────────────────────────┐
-│  1. Ingestion   │→│  2. Parsing     │→│  3. Extraction          │
-│  (Markdown in)  │ │  (AST / blocks) │ │  (Raw requirements)     │
-└─────────────────┘ └─────────────────┘ └───────────┬─────────────┘
-                                                    │
-┌─────────────────┐ ┌─────────────────┐ ┌─────────▼─────────────┐
-│  8. Output      │←│  7. Generation   │←│  4. Normalization      │
-│  (Events/files) │ │  (Terraform)     │ │  (Domain model)        │
-└─────────────────┘ └─────────────────┘ └───────────┬─────────────┘
-                                                    │
-                              ┌─────────────────────▼─────────────────────┐
-                              │  5. Validation (JSON Schema)              │
-                              └─────────────────────┬─────────────────────┘
-                                                    │
-                              ┌─────────────────────▼─────────────────────┐
-                              │  6. Template Selection                    │
-                              └───────────────────────────────────────────┘
+┌─────────────────┐ ┌─────────────────────────┐ ┌─────────────────────────┐
+│  1. Ingestion   │→│  2. JSON Validation     │→│  3. Service Analysis    │
+│  (JSON in)      │ │  (Schema + structure)   │ │  (Requested resources)   │
+└─────────────────┘ └───────────────────────┘ └───────────┬─────────────┘
+                                                           │
+┌─────────────────┐ ┌─────────────────┐ ┌─────────────────▼─────────────┐
+│  7. Output      │←│  6. Generation  │←│  4. Normalization              │
+│  (Events/files) │ │  (Terraform)    │ │  (Domain model)                │
+└─────────────────┘ └─────────────────┘ └───────────┬─────────────────┘
+                                                       │
+                        ┌──────────────────────────────▼──────────────────────┐
+                        │  5. Validation (domain rules + JSON Schema)        │
+                        └───────────────────────────────────────────────────┘
 ```
 
 ### Stage Responsibilities
 
 | Stage | Responsibility | Input | Output |
 |-------|----------------|-------|--------|
-| **1. Ingestion** | Receive Markdown (path or content), load raw text | Event with file path or content | Raw Markdown string |
-| **2. Parsing** | Parse Markdown into structured blocks (headings, code blocks, lists) | Raw Markdown | Parsed document structure |
-| **3. Extraction** | Extract infrastructure requirements from parsed blocks | Parsed document | Raw requirement records |
-| **4. Normalization** | Map raw records to domain model, resolve references | Raw requirements | Normalized domain model |
-| **5. Validation** | Validate against JSON Schema, collect errors/warnings | Domain model (as dict) | Validation result |
-| **6. Template Selection** | Map domain entities to template IDs | Domain model | Template mapping list |
-| **7. Generation** | Render Terraform from templates with domain data | Template mapping + domain model | Terraform file content |
-| **8. Output** | Emit events, write files, return response | Generated Terraform | Published events, files |
+| **1. Ingestion** | Receive JSON (path or content), load raw JSON | Event with file path or content | Raw JSON string or parsed dict |
+| **2. JSON Validation** | Validate input against `input_v1.json` schema; reject malformed structure | Raw JSON | Validated input payload |
+| **3. Service Analysis** | Analyze `vibe_economica.recursos` and `vibe_performance.recursos`; interpret `servico` and `config`; determine which Terraform resources to generate | Validated input | Analyzed resource list |
+| **4. Normalization** | Map analyzed resources to domain model, resolve references | Analyzed resources | Normalized domain model |
+| **5. Validation** | Validate domain model against `architecture_v1.json`; apply business rules (supported types, required attributes, etc.) | Domain model (as dict) | Validation result |
+| **6. Generation** | Template selection + render Terraform from templates | Domain model | Terraform file content |
+| **7. Output** | Persist files (local or S3), emit events | Generated Terraform | Published events, artifacts |
 
 ### Layering
 
 - **Ingestion / Event handling:** Adapter layer (file system, message queue)
-- **Parsing / Extraction:** Application services (orchestration)
+- **JSON Validation / Service Analysis:** Application services (input handling)
 - **Normalization / Validation:** Domain layer (business rules)
-- **Template selection / Generation:** Application services (Terraform-specific)
-- **Output:** Adapter layer (file system, event publishing)
+- **Generation:** Application services (Terraform-specific)
+- **Output:** Adapter layer (file system, object storage upload, event publishing)
+
+---
+
+## Artifact Storage (Environment-Based Persistence)
+
+Generated Terraform artifacts are produced as a **directory per job** containing multiple `.tf` files. Persistence depends on `ENVIRONMENT`:
+
+- **`ENVIRONMENT=dev`:** Artifacts saved locally only. No cloud upload.
+- **`ENVIRONMENT=production`:** Artifacts written locally, then uploaded to Cloudflare object storage via S3-compatible API.
+
+**Key details:**
+
+- **Structure:** One directory per job (`outputs/{job_id}/`) containing multiple files (e.g., `main.tf`, `s3_buckets.tf`, `instances.tf`).
+- **Production upload:** Bucket `vibe-cloud`, prefix `outputs/`, object key `outputs/{job_id}/{file_name}`.
+- **Configuration:** `ENVIRONMENT` from `.env`; S3-compatible credentials used only in production.
+
+**Full specification:** See [ARTIFACT_STORAGE.md](./ARTIFACT_STORAGE.md) for environment-based behavior, storage strategy, output lifecycle, event pipeline, failure handling, and logging.
 
 ---
 
@@ -132,15 +146,16 @@ Events use a `{domain}.{action}.{result}` pattern:
 
 | Event Name | Trigger | Payload |
 |------------|---------|---------|
-| `architecture.ingest.requested` | External request to process a file | `{ "file_path": "...", "correlation_id": "..." }` |
-| `architecture.parsed` | Parsing complete | `{ "correlation_id", "parsed_document": {...} }` |
-| `architecture.extracted` | Extraction complete | `{ "correlation_id", "raw_requirements": [...] }` |
+| `architecture.ingest.requested` | External request to process a file | `{ "file_path": "...", "content": "...", "correlation_id": "..." }` |
+| `architecture.input.validated` | JSON structure validated | `{ "correlation_id", "input_payload": {...} }` |
+| `architecture.services.analyzed` | Service analysis complete | `{ "correlation_id", "analyzed_resources": [...] }` |
 | `architecture.normalized` | Normalization complete | `{ "correlation_id", "domain_model": {...} }` |
 | `architecture.validated` | Validation complete | `{ "correlation_id", "valid": bool, "errors": [], "warnings": [] }` |
 | `architecture.templates.selected` | Template selection complete | `{ "correlation_id", "template_mappings": [...] }` |
 | `architecture.terraform.generated` | Generation complete | `{ "correlation_id", "terraform_files": [{ "path": "...", "content": "..." }] }` |
-| `architecture.processing.completed` | Full pipeline success | `{ "correlation_id", "output_path": "...", "summary": {...} }` |
+| `architecture.processing.completed` | Full pipeline success (incl. artifact upload) | `{ "correlation_id", "output_path": "...", "summary": {...} }` |
 | `architecture.processing.failed` | Pipeline failure | `{ "correlation_id", "stage": "...", "error": "..." }` |
+| `architecture.artifacts.upload.failed` | Artifact upload failure | `{ "correlation_id", "stage": "artifact_upload", "error": "...", "partial_uploads": [...] }` |
 
 ### Correlation ID
 
@@ -152,22 +167,19 @@ Every event in a pipeline shares the same `correlation_id` to enable tracing and
 architecture.ingest.requested
         │
         ▼
-   [Ingestion] ──► architecture.parsed
+   [Ingestion] ──► architecture.input.validated
         │
         ▼
-   [Parsing] ──► architecture.extracted
+   [JSON Validation] ──► architecture.services.analyzed
         │
         ▼
-   [Extraction] ──► architecture.normalized
+   [Service Analysis] ──► architecture.normalized
         │
         ▼
    [Normalization] ──► architecture.validated
         │
         ▼
-   [Validation] ──► architecture.templates.selected
-        │
-        ▼
-   [Template Selection] ──► architecture.terraform.generated
+   [Validation] ──► architecture.terraform.generated
         │
         ▼
    [Generation] ──► architecture.processing.completed
@@ -245,7 +257,7 @@ V1 supports **exactly these six** resource types. Others are rejected with a val
   "name": "web-app-architecture",
   "provider": "aws",
   "metadata": {
-    "source_file": "architectures/web-app.md",
+    "source_file": "architectures/web-app.json",
     "parsed_at": "2025-03-14T10:00:00Z",
     "version": "1.0"
   },
@@ -299,9 +311,10 @@ V1 supports **exactly these six** resource types. Others are rejected with a val
 
 ## JSON Schema Strategy
 
-### Schema Location
+### Schema Locations
 
-- Schema file: `schemas/architecture_v1.json`
+- **Input schema:** `schemas/input_v1.json` — Validates incoming JSON structure (`analise_entrada`, `vibe_economica`, `vibe_performance`, `recursos`).
+- **Domain schema:** `schemas/architecture_v1.json`
 - Versioned: `architecture_v1` implies future `architecture_v2` for breaking changes
 
 ### Validation Rules
@@ -388,19 +401,22 @@ V1 supports **exactly these six** resource types. Others are rejected with a val
 
 ### Output Structure
 
-Generated files are placed in an output directory (configurable):
+Generated files are placed in an output directory (configurable) **per job**:
 
 ```
-output/{correlation_id}/
+output/{job_id}/
 ├── main.tf           # Provider + backend (optional)
-├── variables.tf       # Input variables (if any)
-├── s3_bucket.tf       # One file per resource type group (or per resource)
-├── instance.tf
-├── security_group.tf
+├── variables.tf      # Input variables (if any)
+├── outputs.tf        # Output values (if any)
+├── s3_buckets.tf     # One file per resource type group
+├── instances.tf
+├── security_groups.tf
+├── vpcs.tf
+├── subnets.tf
 └── ...
 ```
 
-**Alternative (simpler for V1):** One `.tf` file per resource, e.g. `assets_bucket.tf`, `web_server.tf`.
+**Directory-based model:** Each generation job produces a unique directory. In dev, files stay local; in production, all files are uploaded to object storage (see [ARTIFACT_STORAGE.md](./ARTIFACT_STORAGE.md)).
 
 **Recommended for V1:** One `.tf` file per *resource type* (e.g., all S3 buckets in `s3_buckets.tf`) to reduce file count and match common Terraform layouts.
 
@@ -467,7 +483,8 @@ terraform-generator-service/
 │   ├── IMPLEMENTATION_ROADMAP.md
 │   └── DEVELOPMENT_CHECKLIST.md
 ├── schemas/
-│   └── architecture_v1.json
+│   ├── input_v1.json           # Input contract (analise_entrada, vibes, recursos)
+│   └── architecture_v1.json    # Domain model (normalized output)
 ├── templates/
 │   └── terraform/
 │       └── aws/
@@ -488,16 +505,12 @@ terraform-generator-service/
 │       │   └── exceptions.py
 │       ├── ingestion/
 │       │   ├── __init__.py
-│       │   ├── loader.py          # Load Markdown from path or content
+│       │   ├── loader.py          # Load JSON from path or content
 │       │   └── events.py          # Event payload types
-│       ├── parsing/
+│       ├── input/
 │       │   ├── __init__.py
-│       │   ├── markdown_parser.py # Parse MD to structured blocks
-│       │   └── blocks.py         # Block types (heading, code, list)
-│       ├── extraction/
-│       │   ├── __init__.py
-│       │   ├── extractor.py      # Extract raw requirements from blocks
-│       │   └── patterns.py      # Regex/pattern definitions
+│       │   ├── validator.py       # Validate JSON against input_v1.json
+│       │   └── analyzer.py        # Analyze recursos; map servico/config to resources
 │       ├── normalization/
 │       │   ├── __init__.py
 │       │   ├── normalizer.py     # Raw → domain model
@@ -528,8 +541,13 @@ terraform-generator-service/
 │   ├── integration/
 │   │   └── test_pipeline.py
 │   └── fixtures/
-│       └── sample_architectures/
-│           └── web_app.md
+│       └── sample_inputs/
+│           ├── web_app.json
+│           ├── vibe_economica_only.json
+│           ├── vibe_performance_only.json
+│           ├── multi_recursos.json
+│           ├── invalid_missing_analise.json
+│           └── invalid_unsupported_service.json
 └── scripts/
     └── run_worker.py
 ```
@@ -539,84 +557,87 @@ terraform-generator-service/
 | Package | Responsibility |
 |---------|----------------|
 | `domain` | Pure domain models, no I/O |
-| `ingestion` | Load Markdown; emit/consume ingest events |
-| `parsing` | Convert Markdown text to structured blocks |
-| `extraction` | Extract raw infrastructure records from blocks |
-| `normalization` | Build domain model; resolve dependencies |
-| `validation` | JSON Schema + custom rules |
+| `ingestion` | Load JSON; emit/consume ingest events |
+| `input` | Validate JSON structure; analyze recursos; map to resource list |
+| `normalization` | Build domain model from analyzed resources; resolve dependencies |
+| `validation` | Domain JSON Schema + custom rules |
 | `terraform` | Template selection, rendering, file writing |
 | `events` | Event publishing, consumption, orchestration |
 
 ---
 
-## Markdown Input Patterns (V1)
+## JSON Input Contract (V1)
 
-### Supported Structure
+### Input Schema
 
-V1 expects architecture documents with:
+The service receives **JSON** as the primary input. The structure is defined in `schemas/input_v1.json`.
 
-1. **Headings** to denote sections (e.g., `## S3 Buckets`, `## Compute`)
-2. **Code blocks** with `terraform` or `hcl` language tag for resource definitions
-3. **Lists** for simple resource listings (e.g., bucket names)
+**Required field:**
+- `analise_entrada` (string): Summary of what was detected/analyzed from the original request.
 
-### Example 1: Code Block Style
+**Optional vibe blocks:**
+- `vibe_economica`: Cost-optimized infrastructure option.
+- `vibe_performance`: Performance-optimized infrastructure option.
 
-```markdown
-# Web Application Architecture
+Each vibe contains:
+- `descricao` (string): Description of the option.
+- `custo_estimado` (string): Estimated cost.
+- `recursos` (array): List of requested resources. Each resource has:
+  - `servico` (string, required): Service identifier (e.g., `aws_s3_bucket`, `aws_instance`).
+  - `config` (string or object, optional): Configuration for the service.
 
-## S3 Buckets
+### Example: Full Input
 
-We need an S3 bucket for static assets.
-
-```terraform
-resource "aws_s3_bucket" "assets_bucket" {
-  bucket = "my-app-assets"
-  tags = {
-    Environment = "production"
-    Project     = "web-app"
+```json
+{
+  "analise_entrada": "Web application with static assets, security group, and compute",
+  "vibe_economica": {
+    "descricao": "Cost-optimized web app",
+    "custo_estimado": "~$25/month",
+    "recursos": [
+      {
+        "servico": "aws_s3_bucket",
+        "config": {
+          "bucket": "my-app-assets",
+          "tags": { "Environment": "production", "Project": "web-app" }
+        }
+      },
+      {
+        "servico": "aws_instance",
+        "config": {
+          "ami": "ami-0c55b159cbfafe1f0",
+          "instance_type": "t3.micro",
+          "tags": { "Role": "web" }
+        }
+      }
+    ]
+  },
+  "vibe_performance": {
+    "descricao": "Performance-optimized",
+    "custo_estimado": "~$80/month",
+    "recursos": [
+      {
+        "servico": "aws_instance",
+        "config": {
+          "ami": "ami-0c55b159cbfafe1f0",
+          "instance_type": "t3.small",
+          "tags": { "Tier": "performance" }
+        }
+      }
+    ]
   }
 }
 ```
 
-## Compute
+### Validation Behavior
 
-```terraform
-resource "aws_instance" "web_server" {
-  ami           = "ami-0c55b159cbfafe1f0"
-  instance_type = "t3.micro"
-  tags = {
-    Role = "web"
-  }
-}
-```
-```
+- **JSON structure:** Must validate against `schemas/input_v1.json`. Missing `analise_entrada` or malformed structure → validation error.
+- **Service names:** Each `servico` in `recursos` must be in the V1 allowed list. Unknown services → validation error.
+- **Config:** Each resource's `config` must satisfy the requirements for that service type (e.g., `aws_s3_bucket` requires `bucket`).
 
-### Example 2: Declarative List Style
+### Vibe Selection
 
-```markdown
-# Simple Storage Architecture
-
-## Buckets
-
-- assets_bucket: my-app-assets (Environment=production)
-- logs_bucket: my-app-logs (Environment=production)
-```
-
-The extractor must recognize both styles. **V1 priority:** Start with code block style (Example 1) as it is more explicit and easier to parse. Add list style in a later phase if needed.
-
-### Example 3: Section-Based with Inline HCL
-
-```markdown
-## Security Groups
-
-### Web SG
-
-- Name: web-sg
-- Description: Security group for web servers
-- Ingress: port 80 from 0.0.0.0/0
-```
-
-The extractor may support a simplified key-value format under headings. **V1:** Focus on HCL code blocks first.
+The pipeline must determine which vibe(s) to use for Terraform generation. V1 may use a single vibe (e.g., `vibe_economica` only) or merge resources from both, per implementation decision. The documentation should be updated when the selection strategy is finalized.
 
 ---
 
@@ -630,11 +651,12 @@ The extractor may support a simplified key-value format under headings. **V1:** 
 - JSON Schema (`architecture_v1.json`)
 - Config (Pydantic Settings)
 
-### Phase 2: Parsing & Extraction (Week 2)
+### Phase 2: JSON Ingestion & Validation (Week 2)
 
-- Markdown parser (blocks: headings, code blocks)
-- Extractor for HCL code blocks
-- Unit tests for parsing and extraction
+- JSON loader (file path or content)
+- Input schema validation (`input_v1.json`)
+- Service analysis from `recursos`
+- Unit tests for ingestion and validation
 
 ### Phase 3: Normalization & Validation (Week 3)
 
@@ -694,25 +716,23 @@ The extractor may support a simplified key-value format under headings. **V1:** 
 - [ ] Add `$defs` for nested structures
 
 ### Ingestion
-- [ ] Implement `Loader` (file path → Markdown string)
-- [ ] Implement content-based loading (string in, string out)
-- [ ] Handle file-not-found and encoding errors
+- [ ] Implement `Loader` (file path → JSON string or dict)
+- [ ] Implement content-based loading (string in, parsed JSON out)
+- [ ] Handle file-not-found, encoding, and JSON parse errors
 
-### Parsing
-- [ ] Integrate Markdown parser (markdown-it-py or mistune)
-- [ ] Define block types (Heading, CodeBlock, List)
-- [ ] Extract headings with levels
-- [ ] Extract code blocks with language tag
+### JSON Validation
+- [ ] Load and validate against `schemas/input_v1.json`
+- [ ] Reject malformed structure (missing `analise_entrada`, invalid `recursos`)
+- [ ] Return clear validation errors with path/field info
 
-### Extraction
-- [ ] Detect `terraform`/`hcl` code blocks
-- [ ] Parse HCL-like content (or use minimal regex for V1)
-- [ ] Extract `resource "type" "name"` patterns
-- [ ] Extract attributes (key = value)
-- [ ] Produce raw requirement records
+### Service Analysis
+- [ ] Iterate over `vibe_economica.recursos` and `vibe_performance.recursos`
+- [ ] Interpret `servico` to map to Terraform resource type
+- [ ] Interpret `config` (string or object) into resource attributes
+- [ ] Produce analyzed resource list for normalization
 
 ### Normalization
-- [ ] Map raw records to `InfrastructureResource`
+- [ ] Map analyzed resources to `InfrastructureResource`
 - [ ] Resolve `dependencies` from references
 - [ ] Validate no circular dependencies
 - [ ] Build `Architecture` root
@@ -745,12 +765,12 @@ The extractor may support a simplified key-value format under headings. **V1:** 
 - [ ] Wire consumer to pipeline
 
 ### Testing
-- [ ] Unit tests for parser
-- [ ] Unit tests for extractor
+- [ ] Unit tests for JSON ingestion and validation
+- [ ] Unit tests for service analysis
 - [ ] Unit tests for normalizer
 - [ ] Unit tests for validator
 - [ ] Unit tests for generator
-- [ ] Integration test: sample MD → Terraform output
+- [ ] Integration test: sample JSON → Terraform output
 
 ### Documentation
 - [ ] README with quick start
@@ -763,13 +783,14 @@ The extractor may support a simplified key-value format under headings. **V1:** 
 
 | Risk | Mitigation |
 |------|------------|
-| **Markdown format varies** | Start with strict patterns; document supported format; fail fast with clear errors |
-| **HCL in code blocks is complex** | V1: Use regex or simple parsing for `resource "x" "y"` and key=value; avoid full HCL parser initially |
+| **JSON structure varies** | Validate strictly against `input_v1.json`; fail fast with clear errors |
+| **Config format varies** | Define expected `config` shape per `servico`; validate before normalization |
 | **Circular dependencies** | Validate in normalization; reject with clear error |
 | **Large files** | Set size limit (e.g., 1MB); stream if needed later |
 | **Unicode in Markdown** | Use UTF-8 throughout; validate encoding |
 | **Template rendering errors** | Wrap in try/except; emit `architecture.processing.failed` with template error |
 | **Output directory exists** | Overwrite or use unique subdir per `correlation_id` |
+| **Partial artifact upload** | Log partial uploads; emit failure event with `partial_uploads` list (see [ARTIFACT_STORAGE.md](./ARTIFACT_STORAGE.md)) |
 
 ### Edge Cases to Handle
 
@@ -792,11 +813,12 @@ The extractor may support a simplified key-value format under headings. **V1:** 
 | REST API | HTTP endpoint for sync processing | Post-V1 |
 | Webhook notifications | Notify on completion/failure | Post-V1 |
 | State backend config | S3 backend for Terraform state | With execution |
+| Artifact storage | Upload generated Terraform to Cloudflare (S3-compatible) | See [ARTIFACT_STORAGE.md](./ARTIFACT_STORAGE.md) |
 
 ---
 
 ## Summary
 
-This PDD defines a narrow, achievable V1: ingest Markdown → parse → extract → normalize → validate → generate Terraform. The design is event-driven, provider-aware, and template-based. Implementation can proceed phase-by-phase with clear checkpoints. Terraform execution is explicitly out of scope.
+This PDD defines a narrow, achievable V1: ingest JSON → validate structure → analyze services → normalize → validate domain model → generate Terraform. The design is event-driven, provider-aware, and template-based. The input contract is JSON with `analise_entrada` and optional `vibe_economica`/`vibe_performance` blocks containing `recursos`. Implementation can proceed phase-by-phase with clear checkpoints. Terraform execution is explicitly out of scope.
 
 Future Cursor prompts can reference this document and implement one stage at a time, preserving architectural consistency.
