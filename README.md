@@ -54,9 +54,18 @@ See [docs/PDD.md](docs/PDD.md) for full architecture, event flow, and domain mod
 
 ---
 
+## Railway Deployment
+
+1. Connect your GitHub repo to Railway.
+2. **If the project is in a subdirectory** (e.g. `terraform-generator-service/`), set **Root Directory** in Railway project settings to that folder.
+3. Railway will use `nixpacks.toml` to run `pip install .` and the Procfile to start the API.
+4. Set env vars: `ENVIRONMENT`, `S3_API`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` (for production).
+
+---
+
 ## Project Status
 
-**Status:** V1 migration in progress. Input contract changed from Markdown to JSON. Implementation updates pending.
+**Status:** V1 complete. JSON input, FastAPI for Railway deployment.
 
 ---
 

@@ -3,7 +3,7 @@ Name: terraform-generator
 Version: 0.1.0
 Summary: Process JSON infrastructure definitions and generate AWS Terraform files
 Author: Terraform Generator Team
-License: MIT
+License-Expression: MIT
 Requires-Python: >=3.10
 Description-Content-Type: text/markdown
 Requires-Dist: pydantic>=2.0

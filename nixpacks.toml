@@ -1,0 +1,4 @@
+# Railway/Nixpacks build configuration
+# Use pip install . to install from pyproject.toml (includes all deps)
+[phases.install]
+cmds = ["pip install ."]
