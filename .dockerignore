@@ -1,0 +1,28 @@
+# Virtual env and caches
+.venv
+.eggs
+*.egg-info
+__pycache__
+.pytest_cache
+.ruff_cache
+.mypy_cache
+
+# Output
+output/
+outputs/
+
+# Git and IDE
+.git
+.gitignore
+.idea
+.DS_Store
+
+# Env (secrets - never in image)
+.env
+.env.*
+
+# Tests (optional: remove to shrink image)
+# tests/
+
+# Docs (optional: remove to shrink image)
+# docs/
