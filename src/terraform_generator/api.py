@@ -26,16 +26,45 @@ def health() -> dict:
 
 
 @app.post("/api/process")
-def process(body: dict) -> JSONResponse:
+from fastapi import Body, HTTPException
+import requests
+
+def process(
+    event_id: str = Body(..., embed=True),
+    project_id: str = Body(..., embed=True),
+    json_url_r2: str = Body(..., alias="json_url_r2", embed=True),
+    sent_at: str = Body(..., embed=True),
+) -> JSONResponse:
     """
     Process JSON input and generate Terraform files.
-    Persistence depends on ENVIRONMENT (dev=local, production=S3).
+    The input parameters are:
+      - event_id: The event identifier.
+      - project_id: The project identifier.
+      - json_url_r2: The R2 (S3-compatible) URL to fetch the JSON definition.
+      - sent_at: Timestamp when the event was sent.
+    The function will retrieve the JSON from the provided R2 URL and then process it.
     """
     settings = Settings()
     orchestrator = Orchestrator(settings=settings)
 
-    # Pass as JSON string (orchestrator expects content for API flow)
-    content = json.dumps(body)
+    # Fetch the JSON definition from the given R2 URL
+    try:
+        response = requests.get(json_url_r2, timeout=15)
+        response.raise_for_status()
+        payload_json = response.json()
+    except Exception as e:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Failed to fetch or parse JSON from R2 url: {json_url_r2}. Error: {str(e)}"
+        )
+
+    # Attach event/project metadata if needed (optional, e.g., inside payload_json)
+    payload_json["_event_id"] = event_id
+    payload_json["_project_id"] = project_id
+    payload_json["_sent_at"] = sent_at
+
+    # Pass as JSON string
+    content = json.dumps(payload_json)
     result = orchestrator.process(content=content)
 
     if isinstance(result, ProcessingCompletedPayload):
