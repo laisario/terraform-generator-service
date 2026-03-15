@@ -6,22 +6,121 @@ A Python event-driven service that receives **JSON input** describing infrastruc
 
 ---
 
-## Quick Start
+## Group Members
+
+- **Laisa Rio**
+- **Lucas Procopio**
+- **Paulo Boccaletti**
+
+---
+
+## Setup
+
+### Prerequisites
+
+- Python 3.10+
+- pip
+
+### Installation
 
 ```bash
-# Install
+# Clone the repository (if not already)
+git clone <repository-url>
+cd terraform-generator-service
+
+# Create and activate a virtual environment (recommended)
+python3 -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+
+# Install in editable mode
 pip install -e .
 
+# Optional: install dev dependencies for testing
+pip install -e ".[dev]"
+```
+
+### Environment Variables
+
+For local development, no extra configuration is required. For production (S3 uploads):
+
+| Variable | Description |
+|----------|-------------|
+| `ENVIRONMENT` | `dev` (local only) or `production` (upload to S3) |
+| `S3_API` | S3-compatible API endpoint URL |
+| `AWS_ACCESS_KEY_ID` | Access key for S3 |
+| `AWS_SECRET_ACCESS_KEY` | Secret key for S3 |
+
+---
+
+## Usage
+
+### CLI
+
+```bash
 # Process a JSON input file
 terraform-generator path/to/input.json
-# or
+
+# Alternative: run as module
 python3 -m terraform_generator.main path/to/input.json
 
-# Or read from stdin
+# Read from stdin
 cat input.json | terraform-generator --stdin
 
-# Output: Terraform files in output/{correlation_id}/
+# Specify output directory (default: output/)
+terraform-generator -o ./my-output path/to/input.json
 ```
+
+**Output:** Terraform files are written to `output/{correlation_id}/` (or the directory specified with `-o`).
+
+### Input Format
+
+The root input must be a **non-empty JSON array**. Each item must contain an `output` object with the architecture payload:
+
+```json
+[
+  {
+    "output": {
+      "analise_entrada": "Project description...",
+      "vibe_economica": {
+        "descricao": "...",
+        "recursos": [
+          { "servico": "aws_s3_bucket", "config": { "bucket": "my-bucket" } }
+        ]
+      },
+      "vibe_performance": { ... }
+    }
+  }
+]
+```
+
+See `tests/fixtures/sample_inputs/` for examples.
+
+### API (FastAPI)
+
+```bash
+# Start the API server
+uvicorn terraform_generator.api:app --reload --port 8000
+```
+
+The API exposes endpoints for health checks and processing. See [docs/PDD.md](docs/PDD.md) for details.
+
+---
+
+## V1 Scope
+
+- **In:** JSON array with items containing `output` (with `analise_entrada` and optional `vibe_economica`/`vibe_performance` blocks and `recursos`)
+- **Out:** Terraform files (`.tf`) for AWS resources
+- **Supported resources:** `aws_s3_bucket`, `aws_s3_bucket_versioning`, `aws_instance`, `aws_security_group`, `aws_vpc`, `aws_subnet`
+
+---
+
+## Architecture Overview
+
+```
+JSON Input (array) → Ingestion → Validate → Extract output → Analyze Services → Normalize → Validate Domain → Generate → Terraform Files
+```
+
+See [docs/PDD.md](docs/PDD.md) for full architecture, event flow, and domain model.
 
 ---
 
@@ -33,24 +132,6 @@ cat input.json | terraform-generator --stdin
 | [docs/IMPLEMENTATION_ROADMAP.md](docs/IMPLEMENTATION_ROADMAP.md) | Implementation phases and milestones |
 | [docs/DEVELOPMENT_CHECKLIST.md](docs/DEVELOPMENT_CHECKLIST.md) | Implementation checklist |
 | [docs/PROMPT_GUIDE.md](docs/PROMPT_GUIDE.md) | Guide for feature-by-feature implementation |
-
----
-
-## V1 Scope
-
-- **In:** JSON input files (`.json`) with `analise_entrada` and optional `vibe_economica`/`vibe_performance` blocks containing `recursos`
-- **Out:** Terraform files (`.tf`) for AWS resources
-- **Supported resources:** `aws_s3_bucket`, `aws_s3_bucket_versioning`, `aws_instance`, `aws_security_group`, `aws_vpc`, `aws_subnet`
-
----
-
-## Architecture Overview
-
-```
-JSON Input → Validate Structure → Analyze Services → Normalize → Validate Domain → Generate → Terraform Files
-```
-
-See [docs/PDD.md](docs/PDD.md) for full architecture, event flow, and domain model.
 
 ---
 
@@ -72,11 +153,10 @@ docker run -p 8000:8000 -e PORT=8000 terraform-generator
 
 ## Project Status
 
-**Status:** V1 complete. JSON input, FastAPI for Railway deployment.
+**Status:** V1 complete. JSON input (array format), FastAPI for Railway deployment.
 
 ---
 
 ## License
 
-(Add license when applicable)
-# terraform-generator-service
+This project is licensed under the **MIT License**. See [LICENSE](LICENSE) for details.

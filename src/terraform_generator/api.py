@@ -56,12 +56,13 @@ def process(
             detail=f"Failed to fetch or parse JSON from R2 url: {json_url_r2}. Error: {str(e)}"
         )
 
-    # Attach event/project metadata if needed (optional, e.g., inside payload_json)
-    payload_json["_event_id"] = event_id
-    payload_json["_project_id"] = project_id
-    payload_json["_sent_at"] = sent_at
+    # Attach event/project metadata to first item (input is array of items with 'output')
+    if isinstance(payload_json, list) and payload_json:
+        payload_json[0]["_event_id"] = event_id
+        payload_json[0]["_project_id"] = project_id
+        payload_json[0]["_sent_at"] = sent_at
 
-    # Pass as JSON string
+    # Pass as JSON string (root must be array)
     content = json.dumps(payload_json)
     result = orchestrator.process(content=content)
 

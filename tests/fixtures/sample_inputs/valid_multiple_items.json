@@ -1,0 +1,22 @@
+[
+  {
+    "output": {
+      "analise_entrada": "First item",
+      "vibe_economica": {
+        "recursos": [
+          { "servico": "aws_s3_bucket", "config": { "bucket": "first-bucket" } }
+        ]
+      }
+    }
+  },
+  {
+    "output": {
+      "analise_entrada": "Second item (not processed - pipeline uses first only)",
+      "vibe_economica": {
+        "recursos": [
+          { "servico": "aws_s3_bucket", "config": { "bucket": "second-bucket" } }
+        ]
+      }
+    }
+  }
+]

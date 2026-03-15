@@ -29,7 +29,7 @@ This folder contains the project documentation for the Terraform Generator Servi
 
 ## Schemas
 
-- **Input schema:** `../schemas/input_v1.json` — Validates incoming JSON (`analise_entrada`, vibes, recursos)
+- **Input schema:** `../schemas/input_v1.json` — Root must be non-empty JSON array; each item has `output` with `analise_entrada`, vibes, recursos
 - **Domain schema:** `../schemas/architecture_v1.json` — Validates the normalized architecture output
 
 ---

@@ -1,0 +1,95 @@
+[
+  {
+    "output": {
+      "analise_entrada": "O projeto \"orcazap\" é um assistente de cotação full-stack com foco no WhatsApp, composto por uma API (FastAPI), frontend (JavaScript/TypeScript), um worker de background (RQ), banco de dados PostgreSQL e cache Redis. Integra-se com WhatsApp Cloud API, Stripe e Sendgrid.",
+      "vibe_economica": {
+        "descricao": "Arquitetura focada em custo zero ou mínimo, utilizando serviços serverless, instâncias spot e tiers gratuitos.",
+        "custo_estimado": "Muito baixo, próximo de zero para cargas de trabalho iniciais.",
+        "recursos": [
+          {
+            "servico": "aws_s3_bucket",
+            "config": {
+              "bucket": "orcazap-frontend-economy",
+              "tags": { "Tier": "economy", "App": "orcazap" }
+            }
+          },
+          {
+            "servico": "aws_instance",
+            "config": {
+              "ami": "ami-0c55b159cbfafe1f0",
+              "instance_type": "t3.micro",
+              "tags": { "Role": "api" }
+            }
+          },
+          {
+            "servico": "aws_instance",
+            "config": {
+              "ami": "ami-0c55b159cbfafe1f0",
+              "instance_type": "t3.micro",
+              "tags": { "Role": "worker" }
+            }
+          },
+          {
+            "servico": "aws_instance",
+            "config": {
+              "ami": "ami-0c55b159cbfafe1f0",
+              "instance_type": "t3.micro",
+              "tags": { "Role": "database" }
+            }
+          },
+          {
+            "servico": "aws_security_group",
+            "config": {
+              "name": "orcazap-economy-sg",
+              "description": "Security group para ambiente economy"
+            }
+          }
+        ]
+      },
+      "vibe_performance": {
+        "descricao": "Arquitetura focada em alta disponibilidade, escalabilidade e performance, utilizando Multi-AZ e Load Balancers.",
+        "custo_estimado": "Moderado a alto, dependendo da carga e do dimensionamento dos recursos.",
+        "recursos": [
+          {
+            "servico": "aws_s3_bucket",
+            "config": {
+              "bucket": "orcazap-frontend-performance",
+              "tags": { "Tier": "performance", "App": "orcazap" }
+            }
+          },
+          {
+            "servico": "aws_instance",
+            "config": {
+              "ami": "ami-0c55b159cbfafe1f0",
+              "instance_type": "t3.medium",
+              "tags": { "Role": "api" }
+            }
+          },
+          {
+            "servico": "aws_instance",
+            "config": {
+              "ami": "ami-0c55b159cbfafe1f0",
+              "instance_type": "t3.medium",
+              "tags": { "Role": "worker" }
+            }
+          },
+          {
+            "servico": "aws_instance",
+            "config": {
+              "ami": "ami-0c55b159cbfafe1f0",
+              "instance_type": "db.t3.medium",
+              "tags": { "Role": "database" }
+            }
+          },
+          {
+            "servico": "aws_security_group",
+            "config": {
+              "name": "orcazap-performance-sg",
+              "description": "Security group para ambiente performance"
+            }
+          }
+        ]
+      }
+    }
+  }
+]

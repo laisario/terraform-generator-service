@@ -16,9 +16,10 @@ class InputValidator:
         self.settings = settings or Settings()
         self.schema_path = schema_path or self.settings.input_schema_path
 
-    def validate(self, data: dict) -> dict:
+    def validate(self, data: list) -> list:
         """
-        Validate data against input schema.
+        Validate root array against input schema.
+        Root must be a non-empty array; each item must contain an 'output' object.
         Returns validated data (unchanged) on success.
         Raises InputValidationError on failure.
         """

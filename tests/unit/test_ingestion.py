@@ -9,17 +9,18 @@ from terraform_generator.domain.exceptions import IngestionError
 from terraform_generator.ingestion.loader import Loader
 
 
-def test_load_from_path_valid_json(tmp_path):
-    """Load valid JSON from file path."""
+def test_load_from_path_valid_array(tmp_path):
+    """Load valid JSON array from file path."""
     json_file = tmp_path / "input.json"
-    json_file.write_text('{"analise_entrada": "test", "vibe_economica": {"recursos": []}}')
+    json_file.write_text('[{"output": {"analise_entrada": "test", "vibe_economica": {"recursos": []}}}]')
 
     loader = Loader(Settings())
     data = loader.load_from_path(json_file)
 
-    assert data["analise_entrada"] == "test"
-    assert "vibe_economica" in data
-    assert data["vibe_economica"]["recursos"] == []
+    assert isinstance(data, list)
+    assert len(data) == 1
+    assert data[0]["output"]["analise_entrada"] == "test"
+    assert data[0]["output"]["vibe_economica"]["recursos"] == []
 
 
 def test_load_from_path_file_not_found():
@@ -29,12 +30,13 @@ def test_load_from_path_file_not_found():
         loader.load_from_path("/nonexistent/path.json")
 
 
-def test_load_from_content_valid_json():
-    """Load valid JSON from string content."""
-    content = '{"analise_entrada": "from stdin"}'
+def test_load_from_content_valid_array():
+    """Load valid JSON array from string content."""
+    content = '[{"output": {"analise_entrada": "from stdin"}}]'
     loader = Loader()
     data = loader.load_from_content(content)
-    assert data["analise_entrada"] == "from stdin"
+    assert isinstance(data, list)
+    assert data[0]["output"]["analise_entrada"] == "from stdin"
 
 
 def test_load_from_content_invalid_json():
@@ -44,8 +46,8 @@ def test_load_from_content_invalid_json():
         loader.load_from_content("{ invalid json }")
 
 
-def test_load_from_content_not_object():
-    """Raise IngestionError when JSON is not an object."""
+def test_load_from_content_rejects_object_root():
+    """Raise IngestionError when root is object instead of array."""
     loader = Loader()
-    with pytest.raises(IngestionError, match="Expected JSON object"):
-        loader.load_from_content('["array", "not", "object"]')
+    with pytest.raises(IngestionError, match="Root input must be a JSON array"):
+        loader.load_from_content('{"analise_entrada": "test"}')

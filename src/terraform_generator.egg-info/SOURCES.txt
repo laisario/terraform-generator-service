@@ -20,6 +20,7 @@ src/terraform_generator/ingestion/__init__.py
 src/terraform_generator/ingestion/loader.py
 src/terraform_generator/input/__init__.py
 src/terraform_generator/input/analyzer.py
+src/terraform_generator/input/extractor.py
 src/terraform_generator/input/validator.py
 src/terraform_generator/normalization/__init__.py
 src/terraform_generator/normalization/normalizer.py

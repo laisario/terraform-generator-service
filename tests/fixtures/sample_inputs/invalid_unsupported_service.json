@@ -1,12 +1,16 @@
-{
-  "analise_entrada": "Contains unsupported service",
-  "vibe_economica": {
-    "descricao": "Uses aws_lambda_function which is not in V1",
-    "recursos": [
-      {
-        "servico": "aws_lambda_function",
-        "config": { "function_name": "my-lambda", "runtime": "python3.11" }
+[
+  {
+    "output": {
+      "analise_entrada": "Contains unsupported service",
+      "vibe_economica": {
+        "descricao": "Uses aws_lambda_function which is not in V1",
+        "recursos": [
+          {
+            "servico": "aws_lambda_function",
+            "config": { "function_name": "my-lambda", "runtime": "python3.11" }
+          }
+        ]
       }
-    ]
+    }
   }
-}
+]

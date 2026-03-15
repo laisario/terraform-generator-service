@@ -67,14 +67,13 @@
 
 ---
 
-## Docs/Tests Still Referencing Markdown
+## Legacy Artifacts (Removed)
 
 | Location | Status |
 |----------|--------|
-| `tests/fixtures/sample_architectures/web_app.md` | Legacy fixture; kept for reference; not used by integration test |
-| `tests/fixtures/sample_architectures/multi_tier_app.md` | Legacy fixture; kept for reference |
-| `tests/test.md` | Legacy; not part of fixtures |
-| Markdown parser, extractor, blocks in PDD folder structure | Removed from primary flow; replaced by input/validator, input/analyzer |
+| `tests/fixtures/sample_architectures/` | Legacy Markdown fixtures; removed |
+| `tests/test.md` | Loose notes; removed |
+| Markdown parser, extractor | Removed from primary flow; replaced by input/validator, input/analyzer |
 
 ---
 

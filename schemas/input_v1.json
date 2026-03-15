@@ -2,35 +2,46 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://terraform-generator.example.com/schemas/input_v1.json",
   "title": "Terraform Generator Input",
-  "description": "Input contract for Terraform Generator Service — JSON describing infrastructure options (vibes) and requested resources",
-  "type": "object",
-  "required": ["analise_entrada"],
-  "properties": {
-    "analise_entrada": {
-      "type": "string",
-      "description": "Summary of what was detected/analyzed from the original request"
-    },
-    "vibe_economica": {
-      "type": "object",
-      "description": "Cost-optimized infrastructure option",
-      "properties": {
-        "descricao": { "type": "string" },
-        "custo_estimado": { "type": "string" },
-        "recursos": {
-          "type": "array",
-          "items": { "$ref": "#/$defs/Recurso" }
-        }
-      }
-    },
-    "vibe_performance": {
-      "type": "object",
-      "description": "Performance-optimized infrastructure option",
-      "properties": {
-        "descricao": { "type": "string" },
-        "custo_estimado": { "type": "string" },
-        "recursos": {
-          "type": "array",
-          "items": { "$ref": "#/$defs/Recurso" }
+  "description": "Input contract: root must be a non-empty JSON array. Each item must contain an 'output' object with architecture data.",
+  "type": "array",
+  "minItems": 1,
+  "items": {
+    "type": "object",
+    "required": ["output"],
+    "properties": {
+      "output": {
+        "type": "object",
+        "required": ["analise_entrada"],
+        "description": "Architecture payload: analise_entrada and optional vibe_economica/vibe_performance",
+        "properties": {
+          "analise_entrada": {
+            "type": "string",
+            "description": "Summary of what was detected/analyzed from the original request"
+          },
+          "vibe_economica": {
+            "type": "object",
+            "description": "Cost-optimized infrastructure option",
+            "properties": {
+              "descricao": { "type": "string" },
+              "custo_estimado": { "type": "string" },
+              "recursos": {
+                "type": "array",
+                "items": { "$ref": "#/$defs/Recurso" }
+              }
+            }
+          },
+          "vibe_performance": {
+            "type": "object",
+            "description": "Performance-optimized infrastructure option",
+            "properties": {
+              "descricao": { "type": "string" },
+              "custo_estimado": { "type": "string" },
+              "recursos": {
+                "type": "array",
+                "items": { "$ref": "#/$defs/Recurso" }
+              }
+            }
+          }
         }
       }
     }

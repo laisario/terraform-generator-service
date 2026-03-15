@@ -1,0 +1,59 @@
+[
+  {
+    "output": {
+      "analise_entrada": "O projeto \"orcazap\" é um assistente de cotação full-stack com foco no WhatsApp, composto por uma API (FastAPI), frontend (JavaScript/TypeScript), um worker de background (RQ), banco de dados PostgreSQL e cache Redis. Integra-se com WhatsApp Cloud API, Stripe e Sendgrid.",
+      "vibe_economica": {
+        "descricao": "Arquitetura focada em custo zero ou mínimo, utilizando serviços serverless, instâncias preemptivas/spot e tiers gratuitos/básicos.",
+        "custo_estimado": "Muito baixo, próximo de zero para cargas de trabalho iniciais.",
+        "recursos": [
+          {
+            "servico": "API (FastAPI)",
+            "config": "AWS Lambda ou Google Cloud Functions (Serverless, pay-per-use)"
+          },
+          {
+            "servico": "Frontend (JavaScript/TypeScript)",
+            "config": "AWS S3 + CloudFront ou Google Cloud Storage (Hospedagem estática, CDN de baixo custo)"
+          },
+          {
+            "servico": "Worker (RQ)",
+            "config": "AWS Lambda ou Google Cloud Functions (Serverless, acionado por eventos)"
+          },
+          {
+            "servico": "Database (PostgreSQL)",
+            "config": "AWS RDS Free Tier (PostgreSQL) ou Google Cloud SQL (db-f1-micro) (Instância pequena, otimizada para custo)"
+          },
+          {
+            "servico": "Cache (Redis)",
+            "config": "AWS ElastiCache (cache.t2.micro) ou Google Cloud Memorystore (Basic Tier) (Instância pequena, otimizada para custo)"
+          }
+        ]
+      },
+      "vibe_performance": {
+        "descricao": "Arquitetura focada em alta disponibilidade, escalabilidade e performance, utilizando Multi-AZ, Load Balancers e instâncias otimizadas.",
+        "custo_estimado": "Moderado a alto, dependendo da carga e do dimensionamento dos recursos.",
+        "recursos": [
+          {
+            "servico": "API (FastAPI)",
+            "config": "AWS ECS Fargate ou Google Cloud Run (Containerizado, auto-escalável, balanceamento de carga, Multi-AZ)"
+          },
+          {
+            "servico": "Frontend (JavaScript/TypeScript)",
+            "config": "AWS S3 + CloudFront ou Google Cloud Storage + CDN (Hospedagem estática, CDN global, cache de borda)"
+          },
+          {
+            "servico": "Worker (RQ)",
+            "config": "AWS ECS Fargate ou Google Cloud Run (Containerizado, auto-escalável, Multi-AZ)"
+          },
+          {
+            "servico": "Database (PostgreSQL)",
+            "config": "AWS RDS Multi-AZ (PostgreSQL) ou Google Cloud SQL (Alta Disponibilidade) (Gerenciado, Multi-AZ, réplicas de leitura)"
+          },
+          {
+            "servico": "Cache (Redis)",
+            "config": "AWS ElastiCache (Redis com Grupos de Replicação) ou Google Cloud Memorystore (Standard Tier) (Gerenciado, HA, replicação)"
+          }
+        ]
+      }
+    }
+  }
+]

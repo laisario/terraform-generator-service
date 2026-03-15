@@ -66,7 +66,7 @@ The service does **not** execute Terraform. It produces ready-to-use `.tf` files
 
 ## Assumptions
 
-1. **Input format:** The service receives **JSON** describing infrastructure options. The JSON contains `analise_entrada` and optionally `vibe_economica` and/or `vibe_performance`, each with `recursos` listing requested services and configs.
+1. **Input format:** The service receives **JSON** as a non-empty array. Each item must contain an `output` object with `analise_entrada` and optionally `vibe_economica` and/or `vibe_performance`, each with `recursos` listing requested services and configs.
 2. **AWS focus:** All V1 resources map to AWS provider (`hashicorp/aws`); no multi-provider logic.
 3. **Event broker:** An event bus (e.g., Redis Streams, RabbitMQ, or SQS) is available; exact choice is configurable.
 4. **Python version:** Python 3.11+ for type hints and modern syntax.

@@ -13,8 +13,8 @@ class Loader:
     def __init__(self, settings: Settings | None = None) -> None:
         self.settings = settings or Settings()
 
-    def load_from_path(self, file_path: str | Path) -> dict:
-        """Load and parse JSON from a file path."""
+    def load_from_path(self, file_path: str | Path) -> list:
+        """Load and parse JSON from a file path. Root must be a JSON array."""
         path = Path(file_path)
         if not path.exists():
             raise IngestionError(f"File not found: {path}")
@@ -33,18 +33,20 @@ class Loader:
 
         return self._parse_json(content, str(path))
 
-    def load_from_content(self, content: str) -> dict:
-        """Load and parse JSON from raw string."""
+    def load_from_content(self, content: str) -> list:
+        """Load and parse JSON from raw string. Root must be a JSON array."""
         return self._parse_json(content, source="<content>")
 
-    def _parse_json(self, content: str, source: str) -> dict:
-        """Parse JSON string to dict. Raises IngestionError on parse failure."""
+    def _parse_json(self, content: str, source: str) -> list:
+        """Parse JSON string. Returns list. Raises IngestionError on parse failure."""
         try:
             data = json.loads(content)
         except json.JSONDecodeError as e:
             raise IngestionError(f"Invalid JSON in {source}: {e}") from e
 
-        if not isinstance(data, dict):
-            raise IngestionError(f"Expected JSON object, got {type(data).__name__}")
+        if not isinstance(data, list):
+            raise IngestionError(
+                f"Root input must be a JSON array, got {type(data).__name__}"
+            )
 
         return data

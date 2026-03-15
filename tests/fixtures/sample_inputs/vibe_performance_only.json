@@ -1,25 +1,29 @@
-{
-  "analise_entrada": "Performance-focused deployment",
-  "vibe_performance": {
-    "descricao": "High performance setup",
-    "custo_estimado": "~$120/month",
-    "recursos": [
-      {
-        "servico": "aws_instance",
-        "config": {
-          "ami": "ami-0c55b159cbfafe1f0",
-          "instance_type": "t3.medium",
-          "tags": { "Tier": "performance" }
-        }
-      },
-      {
-        "servico": "aws_security_group",
-        "config": {
-          "name": "perf-sg",
-          "description": "Performance tier security",
-          "ingress": [{ "from_port": 443, "to_port": 443, "protocol": "tcp", "cidr_blocks": ["0.0.0.0/0"] }]
-        }
+[
+  {
+    "output": {
+      "analise_entrada": "Performance-focused deployment",
+      "vibe_performance": {
+        "descricao": "High performance setup",
+        "custo_estimado": "~$120/month",
+        "recursos": [
+          {
+            "servico": "aws_instance",
+            "config": {
+              "ami": "ami-0c55b159cbfafe1f0",
+              "instance_type": "t3.medium",
+              "tags": { "Tier": "performance" }
+            }
+          },
+          {
+            "servico": "aws_security_group",
+            "config": {
+              "name": "perf-sg",
+              "description": "Performance tier security",
+              "ingress": [{ "from_port": 443, "to_port": 443, "protocol": "tcp", "cidr_blocks": ["0.0.0.0/0"] }]
+            }
+          }
+        ]
       }
-    ]
+    }
   }
-}
+]

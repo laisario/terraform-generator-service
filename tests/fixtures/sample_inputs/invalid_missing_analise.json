@@ -1,6 +1,10 @@
-{
-  "vibe_economica": {
-    "descricao": "Missing analise_entrada",
-    "recursos": []
+[
+  {
+    "output": {
+      "vibe_economica": {
+        "descricao": "Missing analise_entrada",
+        "recursos": []
+      }
+    }
   }
-}
+]

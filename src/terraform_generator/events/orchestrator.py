@@ -19,6 +19,7 @@ from terraform_generator.events.payloads import (
 )
 from terraform_generator.ingestion.loader import Loader
 from terraform_generator.input.analyzer import InputAnalyzer
+from terraform_generator.input.extractor import extract_architecture_payload
 from terraform_generator.input.validator import InputValidator
 from terraform_generator.normalization.normalizer import Normalizer
 from terraform_generator.storage.handler import StorageHandler
@@ -65,17 +66,20 @@ class Orchestrator:
                     error="Either file_path or content must be provided",
                 )
 
-            # 2. JSON validation
-            self.input_validator.validate(data)
+            # 2. JSON validation (root array, each item has 'output')
+            validated_list = self.input_validator.validate(data)
 
-            # 3. Service analysis
-            raw_requirements = self.analyzer.analyze(data)
+            # 3. Extract architecture payload from first item's 'output'
+            architecture_payload = extract_architecture_payload(validated_list)
 
-            # 4. Normalization
+            # 4. Service analysis
+            raw_requirements = self.analyzer.analyze(architecture_payload)
+
+            # 5. Normalization
             normalizer = Normalizer(correlation_id=cid, source_file=source_file)
             architecture = normalizer.normalize(raw_requirements)
 
-            # 5. Validation
+            # 6. Validation
             result = self.validator.validate(architecture)
             if not result.valid:
                 errors_str = "; ".join(f"{e.code}: {e.message}" for e in result.errors)
@@ -85,10 +89,10 @@ class Orchestrator:
                     error=errors_str,
                 )
 
-            # 6. Template selection + 7. Generation
+            # 7. Template selection + 8. Generation
             files = self.generator.generate(architecture)
 
-            # 8. Persistence: dev=local only, production=S3 only (no local write)
+            # 9. Persistence: dev=local only, production=S3 only (no local write)
             success, object_keys = self.storage_handler.persist(files, cid)
             if not success:
                 partial = object_keys if object_keys is not None else []

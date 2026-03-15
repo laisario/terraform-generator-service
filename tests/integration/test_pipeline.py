@@ -12,8 +12,55 @@ from terraform_generator.events.orchestrator import Orchestrator
 from terraform_generator.events.payloads import ProcessingCompletedPayload, ProcessingFailedPayload
 
 
+def test_pipeline_empty_array_returns_failed():
+    """Empty array returns ProcessingFailedPayload."""
+    fixture = Path(__file__).parent.parent / "fixtures" / "sample_inputs" / "invalid_empty_array.json"
+    if not fixture.exists():
+        pytest.skip("Fixture not found")
+
+    settings = Settings.model_construct(environment="dev", output_dir=Path("/tmp/tfgen_test_output"))
+    orchestrator = Orchestrator(settings=settings)
+    result = orchestrator.process(file_path=fixture)
+
+    assert isinstance(result, ProcessingFailedPayload)
+    assert result.stage == "input_validation"
+
+
+def test_pipeline_item_without_output_returns_failed():
+    """Item without output returns ProcessingFailedPayload."""
+    fixture = Path(__file__).parent.parent / "fixtures" / "sample_inputs" / "invalid_item_without_output.json"
+    if not fixture.exists():
+        pytest.skip("Fixture not found")
+
+    settings = Settings.model_construct(environment="dev", output_dir=Path("/tmp/tfgen_test_output"))
+    orchestrator = Orchestrator(settings=settings)
+    result = orchestrator.process(file_path=fixture)
+
+    assert isinstance(result, ProcessingFailedPayload)
+    assert result.stage == "input_validation"
+
+
+def test_pipeline_object_root_returns_ingestion_error():
+    """Object at root (old format) returns ingestion error."""
+    import tempfile
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
+        f.write('{"analise_entrada": "test"}')
+        tmp_path = f.name
+
+    try:
+        settings = Settings.model_construct(environment="dev", output_dir=Path("/tmp/tfgen_test_output"))
+        orchestrator = Orchestrator(settings=settings)
+        result = orchestrator.process(file_path=tmp_path)
+        assert isinstance(result, ProcessingFailedPayload)
+        assert result.stage == "ingestion"
+        assert "array" in result.error.lower()
+    finally:
+        import os
+        os.unlink(tmp_path)
+
+
 def test_pipeline_invalid_json_returns_failed():
-    """Invalid JSON (missing analise_entrada) returns ProcessingFailedPayload."""
+    """Invalid JSON (missing analise_entrada in output) returns ProcessingFailedPayload."""
     fixture = Path(__file__).parent.parent / "fixtures" / "sample_inputs" / "invalid_missing_analise.json"
     if not fixture.exists():
         pytest.skip("Fixture not found")
