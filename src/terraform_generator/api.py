@@ -2,7 +2,8 @@
 
 import json
 
-from fastapi import FastAPI
+import requests
+from fastapi import Body, FastAPI, HTTPException
 from fastapi.responses import JSONResponse
 
 from terraform_generator.config import Settings
@@ -26,9 +27,6 @@ def health() -> dict:
 
 
 @app.post("/api/process")
-from fastapi import Body, HTTPException
-import requests
-
 def process(
     event_id: str = Body(..., embed=True),
     project_id: str = Body(..., embed=True),
