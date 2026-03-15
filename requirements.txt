@@ -5,4 +5,4 @@ jsonschema>=4.20
 boto3>=1.28
 fastapi>=0.100
 uvicorn[standard]>=0.22
-terraform=1.14.7
+terraform==1.14.7
