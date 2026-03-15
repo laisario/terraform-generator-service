@@ -8,11 +8,15 @@ OUTPUT_ROOT = "output"
 
 def build_object_key(job_id: str, filename: str) -> str:
     """
-    Build S3 object key that mirrors local structure.
+    Build S3 object key that mirrors local directory structure.
+
+    S3 uses the key as the full path; slashes create logical hierarchy.
     Result: output/<job_id>/<filename>
+
+    Example: output/c8883521-f871-4d3b-a9f6-16affcdd54ba/main.tf
     """
-    key = Path(OUTPUT_ROOT) / job_id / filename
-    return key.as_posix()
+    safe_filename = Path(filename).name
+    return f"{OUTPUT_ROOT}/{job_id}/{safe_filename}"
 
 
 def build_local_job_dir(output_root: Path, job_id: str) -> Path:
