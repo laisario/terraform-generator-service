@@ -16,6 +16,8 @@ dependencies = [
     "jinja2>=3.1",
     "jsonschema>=4.20",
     "boto3>=1.28",
+    "fastapi>=0.100",
+    "uvicorn[standard]>=0.22",
 ]
 
 [project.optional-dependencies]
