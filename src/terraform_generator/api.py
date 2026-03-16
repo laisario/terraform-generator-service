@@ -2,6 +2,7 @@
 
 import json
 import logging
+import os
 
 import requests
 from fastapi import Body, FastAPI, HTTPException
@@ -15,6 +16,11 @@ from terraform_generator.events.payloads import (
 )
 from terraform_generator.input.vibe_selector import ALLOWED_DECISIONS
 
+logging.basicConfig(
+    level=getattr(logging, os.environ.get("LOG_LEVEL", "INFO").upper(), logging.INFO),
+    format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
 logger = logging.getLogger(__name__)
 
 app = FastAPI(
