@@ -1,6 +1,6 @@
 # Terraform Generator Service
 
-Serviço em Python orientado a eventos que recebe **entrada JSON** descrevendo opções de infraestrutura (vibes), valida a estrutura e os serviços solicitados, normaliza o conteúdo em uma representação interna alinhada a JSON-Schema e gera arquivos de configuração Terraform a partir de templates voltados para AWS.
+Serviço em Python orientado a eventos que recebe **entrada JSON** descrevendo opções de infraestrutura (vibes), valida a estrutura e os serviços solicitados, normaliza o conteúdo em uma representação interna alinhada a JSON-Schema e gera arquivos de configuração Terraform a partir de templates voltados para AWS (até o momento).
 
 **Objetivo:** Automatizar a geração de arquivos Terraform para AWS a partir de definições de arquitetura de alto nível. O serviço não executa Terraform — ele produz arquivos `.tf` prontos para uso por ferramentas externas (CI/CD, Terraform Cloud ou `terraform apply` manual).
 
