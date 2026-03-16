@@ -1,12 +1,12 @@
 # Terraform Generator Service
 
-A Python event-driven service that receives **JSON input** describing infrastructure options (vibes), validates the structure and requested services, normalizes the content into a JSON-Schema-aligned internal representation, and generates Terraform configuration files from AWS-oriented templates.
+Serviço em Python orientado a eventos que recebe **entrada JSON** descrevendo opções de infraestrutura (vibes), valida a estrutura e os serviços solicitados, normaliza o conteúdo em uma representação interna alinhada a JSON-Schema e gera arquivos de configuração Terraform a partir de templates voltados para AWS.
 
-**V1 does not execute Terraform** — it produces ready-to-use `.tf` files for external tooling (CI/CD, Terraform Cloud, or manual `terraform apply`).
+**Objetivo:** Automatizar a geração de arquivos Terraform para AWS a partir de definições de arquitetura de alto nível. O serviço não executa Terraform — ele produz arquivos `.tf` prontos para uso por ferramentas externas (CI/CD, Terraform Cloud ou `terraform apply` manual).
 
 ---
 
-## Group Members
+## Membros da equipe
 
 - **Laisa Rio**
 - **Lucas Procopio**
@@ -14,78 +14,96 @@ A Python event-driven service that receives **JSON input** describing infrastruc
 
 ---
 
-## Setup
+## Onde o projeto está hospedado
 
-### Prerequisites
+O serviço está disponível em produção no **Railway**:
+
+**URL:** https://terraform-generator-service-production.up.railway.app
+
+O repositório está no **GitHub**. Para clonar:
+
+```bash
+git clone https://github.com/<sua-org>/terraform-generator-service.git
+cd terraform-generator-service
+```
+
+---
+
+## Configuração
+
+### Pré-requisitos
 
 - Python 3.10+
 - pip
 
-### Installation
+### Instalação
 
 ```bash
-# Clone the repository (if not already)
-git clone <repository-url>
-cd terraform-generator-service
-
-# Create and activate a virtual environment (recommended)
+# Crie e ative um ambiente virtual (recomendado)
 python3 -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+source .venv/bin/activate  # No Windows: .venv\Scripts\activate
 
-# Install in editable mode
+# Instale em modo editável
 pip install -e .
 
-# Optional: install dev dependencies for testing
+# Opcional: instale dependências de desenvolvimento para testes
 pip install -e ".[dev]"
 ```
 
-### Environment Variables
+### Variáveis de ambiente
 
-For local development, no extra configuration is required. For production (S3 uploads):
+Copie o arquivo de exemplo e configure:
 
-| Variable | Description |
-|----------|-------------|
-| `ENVIRONMENT` | `dev` (local only) or `production` (upload to S3) |
-| `S3_API` | S3-compatible API endpoint URL |
-| `AWS_ACCESS_KEY_ID` | Access key for S3 |
-| `AWS_SECRET_ACCESS_KEY` | Secret key for S3 |
+```bash
+cp .env.example .env
+```
+
+Edite o `.env` com seus valores. Para **desenvolvimento local**, `ENVIRONMENT=dev` é suficiente (não precisa de credenciais S3). Para **produção** (upload para S3), configure:
+
+| Variável | Descrição |
+|----------|------------|
+| `ENVIRONMENT` | `dev` (apenas local) ou `production` (upload para S3) |
+| `S3_API` | URL do endpoint da API S3-compatível (ex.: Cloudflare R2) |
+| `AWS_ACCESS_KEY_ID` | Chave de acesso para S3 |
+| `AWS_SECRET_ACCESS_KEY` | Chave secreta para S3 |
+| `LOG_LEVEL` | Opcional: `DEBUG`, `INFO`, `WARNING`, `ERROR` (padrão: `INFO`) |
 
 ---
 
-## Usage
+## Uso
 
 ### CLI
 
 ```bash
-# Process a JSON input file (specify which vibe to generate)
-terraform-generator --decision vibe_economica path/to/input.json
-terraform-generator --decision vibe_performance path/to/input.json
+# Processar um arquivo JSON (especifique qual vibe gerar)
+terraform-generator --decision vibe_economica caminho/para/input.json
+terraform-generator --decision vibe_performance caminho/para/input.json
 
-# Without --decision: both vibes are processed (backward compatible)
-terraform-generator path/to/input.json
+# Sem --decision: ambas as vibes são processadas (retrocompatível)
+terraform-generator caminho/para/input.json
 
-# Read from stdin
+# Ler da entrada padrão
 cat input.json | terraform-generator --decision vibe_economica --stdin
 
-# Specify output directory (default: output/)
-terraform-generator -o ./my-output --decision vibe_economica path/to/input.json
+# Especificar diretório de saída (padrão: output/)
+terraform-generator -o ./minha-saida --decision vibe_economica caminho/para/input.json
 ```
 
-**Output:** Terraform files are written to `output/{correlation_id}/` (or the directory specified with `-o`).
+**Saída:** Os arquivos Terraform são gravados em `output/{correlation_id}/` (ou no diretório especificado com `-o`).
 
-### Input Format
+### Formato de entrada
 
-The root input must be a **non-empty JSON array**. Each item must contain an `output` object with the architecture payload:
+A entrada deve ser um **array JSON não vazio**. Cada item deve conter um objeto `output` com o payload da arquitetura:
 
 ```json
 [
   {
     "output": {
-      "analise_entrada": "Project description...",
+      "analise_entrada": "Descrição do projeto...",
       "vibe_economica": {
         "descricao": "...",
         "recursos": [
-          { "servico": "aws_s3_bucket", "config": { "bucket": "my-bucket" } }
+          { "servico": "aws_s3_bucket", "config": { "bucket": "meu-bucket" } }
         ]
       },
       "vibe_performance": { ... }
@@ -94,54 +112,103 @@ The root input must be a **non-empty JSON array**. Each item must contain an `ou
 ]
 ```
 
-See `tests/fixtures/sample_inputs/` for examples.
+Veja exemplos em `tests/fixtures/sample_inputs/`.
 
 ### API (FastAPI)
 
+Inicie o servidor da API:
+
 ```bash
-# Start the API server
 uvicorn terraform_generator.api:app --reload --port 8000
 ```
 
-The `/api/process` endpoint requires a `decision` field (`vibe_economica` or `vibe_performance`) in the request body. Only the chosen vibe is used for Terraform generation. See [docs/PDD.md](docs/PDD.md) for details.
+#### Chamando `/api/process`
+
+**Método:** `POST`  
+**URL local:** `http://localhost:8000/api/process`  
+**URL em produção:** `https://terraform-generator-service-production.up.railway.app/api/process`
+
+**Corpo da requisição (JSON):**
+
+```json
+{
+  "event_id": "ev-123",
+  "project_id": "proj-456",
+  "json_url_r2": "https://seu-storage.exemplo.com/caminho/para/arquitetura.json",
+  "sent_at": "2025-03-14T12:00:00Z",
+  "decision": "vibe_economica"
+}
+```
+
+| Campo | Tipo | Descrição |
+|-------|------|-----------|
+| `event_id` | string | Identificador do evento |
+| `project_id` | string | Identificador do projeto |
+| `json_url_r2` | string | URL para buscar a definição JSON da arquitetura (R2/S3 ou qualquer URL HTTP) |
+| `sent_at` | string | Data/hora em que o evento foi enviado |
+| `decision` | string | `vibe_economica` ou `vibe_performance` — qual vibe gerar |
+
+**Resposta de sucesso (200):**
+
+```json
+{
+  "success": true,
+  "correlation_id": "uuid",
+  "output_path": "output/uuid/",
+  "summary": { "resources": 3, "files": 4 }
+}
+```
+
+**Resposta de erro (422):**
+
+```json
+{
+  "success": false,
+  "correlation_id": "uuid",
+  "stage": "input_validation",
+  "error": "Mensagem de erro"
+}
+```
+
+O JSON em `json_url_r2` pode ser um **array** `[{ "output": {...} }]` ou um **objeto** `{ "output": {...} }` / `{ "analise_entrada": "...", "vibe_economica": {...}, ... }`. A API normaliza ambos os formatos.
 
 ---
 
-## V1 Scope
+## Escopo V1
 
-- **In:** JSON array with items containing `output` (with `analise_entrada` and optional `vibe_economica`/`vibe_performance` blocks and `recursos`)
-- **Out:** Terraform files (`.tf`) for AWS resources
-- **Supported resources:** `aws_s3_bucket`, `aws_s3_bucket_versioning`, `aws_instance`, `aws_security_group`, `aws_vpc`, `aws_subnet`
+- **Entrada:** Array JSON com itens contendo `output` (com `analise_entrada` e blocos opcionais `vibe_economica`/`vibe_performance` e `recursos`)
+- **Saída:** Arquivos Terraform (`.tf`) para recursos AWS
+- **Recursos suportados:** `aws_s3_bucket`, `aws_s3_bucket_versioning`, `aws_instance`, `aws_security_group`, `aws_vpc`, `aws_subnet`
 
 ---
 
-## Architecture Overview
+## Visão geral da arquitetura
 
 ```
-JSON Input (array) → Ingestion → Validate → Extract output → Analyze Services → Normalize → Validate Domain → Generate → Terraform Files
+Entrada JSON (array) → Ingestão → Validação → Extração do output → Análise de serviços → Normalização → Validação do domínio → Geração → Arquivos Terraform
 ```
 
-See [docs/PDD.md](docs/PDD.md) for full architecture, event flow, and domain model.
+Veja [docs/PDD.md](docs/PDD.md) para a arquitetura completa, fluxo de eventos e modelo de domínio.
 
 ---
 
-## Documentation
+## Documentação
 
-| Document | Description |
-|----------|-------------|
-| [docs/PDD.md](docs/PDD.md) | Full Prompt-Driven Development specification |
-| [docs/IMPLEMENTATION_ROADMAP.md](docs/IMPLEMENTATION_ROADMAP.md) | Implementation phases and milestones |
-| [docs/DEVELOPMENT_CHECKLIST.md](docs/DEVELOPMENT_CHECKLIST.md) | Implementation checklist |
-| [docs/PROMPT_GUIDE.md](docs/PROMPT_GUIDE.md) | Guide for feature-by-feature implementation |
+| Documento | Descrição |
+|-----------|-----------|
+| [docs/PDD.md](docs/PDD.md) | Especificação completa de Prompt-Driven Development |
+| [docs/IMPLEMENTATION_ROADMAP.md](docs/IMPLEMENTATION_ROADMAP.md) | Fases e marcos de implementação |
+| [docs/DEVELOPMENT_CHECKLIST.md](docs/DEVELOPMENT_CHECKLIST.md) | Checklist de implementação |
+| [docs/PROMPT_GUIDE.md](docs/PROMPT_GUIDE.md) | Guia para implementação feature a feature |
 
 ---
 
-## Railway Deployment
+## Deploy no Railway
 
-1. Connect your GitHub repo to Railway.
-2. **If the project is in a subdirectory**, set **Root Directory** in Railway project settings to that folder.
-3. Railway will use the **Dockerfile** (or `nixpacks.toml` + Procfile if no Dockerfile).
-4. Set env vars: `ENVIRONMENT`, `S3_API`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` (for production).
+1. Conecte seu repositório GitHub ao Railway.
+2. **Se o projeto estiver em um subdiretório**, defina **Root Directory** nas configurações do projeto no Railway.
+3. O Railway usará o **Dockerfile** (ou `nixpacks.toml` + Procfile se não houver Dockerfile).
+4. Configure as variáveis de ambiente: `ENVIRONMENT`, `S3_API`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` (para produção).
 
 ### Build local (Docker)
 
@@ -152,12 +219,12 @@ docker run -p 8000:8000 -e PORT=8000 terraform-generator
 
 ---
 
-## Project Status
+## Status do projeto
 
-**Status:** V1 complete. JSON input (array format), FastAPI for Railway deployment.
+**Status:** V1 completo. Entrada JSON (formato array ou objeto), FastAPI para deploy no Railway, seleção de vibe baseada em decisão.
 
 ---
 
-## License
+## Licença
 
-This project is licensed under the **MIT License**. See [LICENSE](LICENSE) for details.
+Este projeto está licenciado sob a **MIT License**. Veja [LICENSE](LICENSE) para detalhes.
