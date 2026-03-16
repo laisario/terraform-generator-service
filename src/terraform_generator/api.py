@@ -1,6 +1,7 @@
 """HTTP API for Terraform Generator Service (Railway, etc.)."""
 
 import json
+import logging
 
 import requests
 from fastapi import Body, FastAPI, HTTPException
@@ -13,6 +14,8 @@ from terraform_generator.events.payloads import (
     ProcessingFailedPayload,
 )
 from terraform_generator.input.vibe_selector import ALLOWED_DECISIONS
+
+logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title="Terraform Generator Service",
@@ -86,6 +89,18 @@ def process(
         )
 
     assert isinstance(result, ProcessingFailedPayload)
+    logger.warning(
+        "Process failed: stage=%s correlation_id=%s error=%s",
+        result.stage,
+        result.correlation_id,
+        result.error,
+        extra={
+            "stage": result.stage,
+            "correlation_id": result.correlation_id,
+            "error": result.error,
+            "partial_uploads": result.partial_uploads,
+        },
+    )
     return JSONResponse(
         status_code=422,
         content={
