@@ -88,29 +88,27 @@ def test_pipeline_unsupported_service_returns_failed():
 
 
 def test_pipeline_web_app():
-    """Full pipeline: web_app.json -> Terraform files.
+    """Full pipeline: web_app.json with decision=vibe_economica -> Terraform files.
 
-    Input: JSON with analise_entrada, vibe_economica (S3, security group, instance).
-    Expected: ProcessingCompletedPayload; output dir contains main.tf, s3_buckets.tf,
-    security_groups.tf, instances.tf.
+    Input: JSON with both vibes; decision selects vibe_economica only.
+    Expected: ProcessingCompletedPayload with 3 resources (S3, security group, instance).
     """
     fixture = Path(__file__).parent.parent / "fixtures" / "sample_inputs" / "web_app.json"
     if not fixture.exists():
         pytest.skip("Fixture not found: web_app.json")
 
-    # Use model_construct to force dev mode (avoids .env ENVIRONMENT=production)
     settings = Settings.model_construct(
         environment="dev",
         output_dir=Path("/tmp/tfgen_test_output"),
     )
     orchestrator = Orchestrator(settings=settings)
-    result = orchestrator.process(file_path=fixture)
+    result = orchestrator.process(file_path=fixture, decision="vibe_economica")
 
     assert isinstance(result, ProcessingCompletedPayload), (
         f"Expected ProcessingCompletedPayload, got {type(result).__name__}"
     )
-    # web_app.json vibe_economica has 3 resources: S3, security group, instance
-    assert result.summary["resources"] >= 3
+    # vibe_economica has exactly 3 resources: S3, security group, instance
+    assert result.summary["resources"] == 3
     assert result.summary["files"] >= 4
 
     output_path = Path(result.output_path)
@@ -119,3 +117,76 @@ def test_pipeline_web_app():
     assert (output_path / "s3_buckets.tf").exists()
     assert (output_path / "security_groups.tf").exists()
     assert (output_path / "instances.tf").exists()
+
+
+def test_pipeline_decision_vibe_economica_generates_only_economic_resources():
+    """decision=vibe_economica generates only vibe_economica resources (3)."""
+    fixture = Path(__file__).parent.parent / "fixtures" / "sample_inputs" / "web_app.json"
+    if not fixture.exists():
+        pytest.skip("Fixture not found")
+
+    settings = Settings.model_construct(environment="dev", output_dir=Path("/tmp/tfgen_test_output"))
+    orchestrator = Orchestrator(settings=settings)
+    result = orchestrator.process(file_path=fixture, decision="vibe_economica")
+
+    assert isinstance(result, ProcessingCompletedPayload)
+    assert result.summary["resources"] == 3
+
+
+def test_pipeline_decision_vibe_performance_generates_only_performance_resources():
+    """decision=vibe_performance generates only vibe_performance resources (2)."""
+    fixture = Path(__file__).parent.parent / "fixtures" / "sample_inputs" / "web_app.json"
+    if not fixture.exists():
+        pytest.skip("Fixture not found")
+
+    settings = Settings.model_construct(environment="dev", output_dir=Path("/tmp/tfgen_test_output"))
+    orchestrator = Orchestrator(settings=settings)
+    result = orchestrator.process(file_path=fixture, decision="vibe_performance")
+
+    assert isinstance(result, ProcessingCompletedPayload)
+    assert result.summary["resources"] == 2
+
+
+def test_pipeline_invalid_decision_returns_failed():
+    """Invalid decision returns ProcessingFailedPayload."""
+    fixture = Path(__file__).parent.parent / "fixtures" / "sample_inputs" / "web_app.json"
+    if not fixture.exists():
+        pytest.skip("Fixture not found")
+
+    settings = Settings.model_construct(environment="dev", output_dir=Path("/tmp/tfgen_test_output"))
+    orchestrator = Orchestrator(settings=settings)
+    result = orchestrator.process(file_path=fixture, decision="invalid_vibe")
+
+    assert isinstance(result, ProcessingFailedPayload)
+    assert result.stage == "input_validation"
+    assert "Invalid decision" in result.error
+
+
+def test_pipeline_chosen_vibe_missing_returns_failed():
+    """When chosen vibe does not exist in payload, returns ProcessingFailedPayload."""
+    fixture = Path(__file__).parent.parent / "fixtures" / "sample_inputs" / "vibe_economica_only.json"
+    if not fixture.exists():
+        pytest.skip("Fixture not found")
+
+    settings = Settings.model_construct(environment="dev", output_dir=Path("/tmp/tfgen_test_output"))
+    orchestrator = Orchestrator(settings=settings)
+    result = orchestrator.process(file_path=fixture, decision="vibe_performance")
+
+    assert isinstance(result, ProcessingFailedPayload)
+    assert result.stage == "input_validation"
+    assert "not found" in result.error.lower()
+
+
+def test_pipeline_no_decision_processes_both_vibes():
+    """When decision is omitted, both vibes are processed (CLI backward compat)."""
+    fixture = Path(__file__).parent.parent / "fixtures" / "sample_inputs" / "web_app.json"
+    if not fixture.exists():
+        pytest.skip("Fixture not found")
+
+    settings = Settings.model_construct(environment="dev", output_dir=Path("/tmp/tfgen_test_output"))
+    orchestrator = Orchestrator(settings=settings)
+    result = orchestrator.process(file_path=fixture)
+
+    assert isinstance(result, ProcessingCompletedPayload)
+    # Both vibes: 3 + 2 = 5 resources
+    assert result.summary["resources"] == 5

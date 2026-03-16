@@ -33,6 +33,12 @@ def main() -> None:
         action="store_true",
         help="Read JSON from stdin instead of file",
     )
+    parser.add_argument(
+        "--decision",
+        choices=["vibe_economica", "vibe_performance"],
+        default=None,
+        help="Which vibe to generate (required when payload has both vibes)",
+    )
     args = parser.parse_args()
 
     if args.stdin:
@@ -47,7 +53,11 @@ def main() -> None:
     settings = Settings(output_dir=Path(args.output_dir))
     orchestrator = Orchestrator(settings=settings)
 
-    result = orchestrator.process(file_path=file_path, content=content)
+    result = orchestrator.process(
+        file_path=file_path,
+        content=content,
+        decision=args.decision,
+    )
 
     if isinstance(result, ProcessingCompletedPayload):
         print(f"Success: Terraform files written to {result.output_path}")

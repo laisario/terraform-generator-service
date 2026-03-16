@@ -57,17 +57,18 @@ For local development, no extra configuration is required. For production (S3 up
 ### CLI
 
 ```bash
-# Process a JSON input file
+# Process a JSON input file (specify which vibe to generate)
+terraform-generator --decision vibe_economica path/to/input.json
+terraform-generator --decision vibe_performance path/to/input.json
+
+# Without --decision: both vibes are processed (backward compatible)
 terraform-generator path/to/input.json
 
-# Alternative: run as module
-python3 -m terraform_generator.main path/to/input.json
-
 # Read from stdin
-cat input.json | terraform-generator --stdin
+cat input.json | terraform-generator --decision vibe_economica --stdin
 
 # Specify output directory (default: output/)
-terraform-generator -o ./my-output path/to/input.json
+terraform-generator -o ./my-output --decision vibe_economica path/to/input.json
 ```
 
 **Output:** Terraform files are written to `output/{correlation_id}/` (or the directory specified with `-o`).
@@ -102,7 +103,7 @@ See `tests/fixtures/sample_inputs/` for examples.
 uvicorn terraform_generator.api:app --reload --port 8000
 ```
 
-The API exposes endpoints for health checks and processing. See [docs/PDD.md](docs/PDD.md) for details.
+The `/api/process` endpoint requires a `decision` field (`vibe_economica` or `vibe_performance`) in the request body. Only the chosen vibe is used for Terraform generation. See [docs/PDD.md](docs/PDD.md) for details.
 
 ---
 

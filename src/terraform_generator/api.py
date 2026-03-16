@@ -12,6 +12,7 @@ from terraform_generator.events.payloads import (
     ProcessingCompletedPayload,
     ProcessingFailedPayload,
 )
+from terraform_generator.input.vibe_selector import ALLOWED_DECISIONS
 
 app = FastAPI(
     title="Terraform Generator Service",
@@ -32,6 +33,7 @@ def process(
     project_id: str = Body(..., embed=True),
     json_url_r2: str = Body(..., alias="json_url_r2", embed=True),
     sent_at: str = Body(..., embed=True),
+    decision: str = Body(..., embed=True),
 ) -> JSONResponse:
     """
     Process JSON input and generate Terraform files.
@@ -40,8 +42,14 @@ def process(
       - project_id: The project identifier.
       - json_url_r2: The R2 (S3-compatible) URL to fetch the JSON definition.
       - sent_at: Timestamp when the event was sent.
-    The function will retrieve the JSON from the provided R2 URL and then process it.
+      - decision: Which vibe to generate (vibe_economica or vibe_performance).
+    Only the chosen vibe is used for Terraform generation.
     """
+    if decision not in ALLOWED_DECISIONS:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Invalid decision '{decision}'. Allowed values: {sorted(ALLOWED_DECISIONS)}",
+        )
     settings = Settings()
     orchestrator = Orchestrator(settings=settings)
 
@@ -62,9 +70,9 @@ def process(
         payload_json[0]["_project_id"] = project_id
         payload_json[0]["_sent_at"] = sent_at
 
-    # Pass as JSON string (root must be array)
+    # Pass as JSON string (root must be array) with decision for vibe selection
     content = json.dumps(payload_json)
-    result = orchestrator.process(content=content)
+    result = orchestrator.process(content=content, decision=decision)
 
     if isinstance(result, ProcessingCompletedPayload):
         return JSONResponse(

@@ -54,12 +54,25 @@
 
 ---
 
+## Decision-Based Vibe Selection
+
+The API `/api/process` requires a `decision` field (`vibe_economica` or `vibe_performance`). Only the chosen vibe is used for Terraform generation.
+
+| Test Case | Expected |
+|-----------|----------|
+| `decision=vibe_economica` | Only vibe_economica resources generated |
+| `decision=vibe_performance` | Only vibe_performance resources generated |
+| Missing `decision` (API) | 422 validation error |
+| Invalid `decision` | 422 validation error |
+| Chosen vibe missing from payload | ProcessingFailedPayload with clear error |
+
 ## Integration Test: Pipeline
 
 **Test:** `tests/integration/test_pipeline.py::test_pipeline_web_app`
 
 **Spec:**
 - Input: `tests/fixtures/sample_inputs/web_app.json` (array format)
-- Expected: `ProcessingCompletedPayload` with `output_path` pointing to generated Terraform directory
+- Decision: `vibe_economica` (only that vibe is processed)
+- Expected: `ProcessingCompletedPayload` with 3 resources
 - Assert: `main.tf`, `s3_buckets.tf`, `security_groups.tf`, `instances.tf` exist
 - Environment: `dev` (local persistence)

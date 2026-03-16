@@ -21,6 +21,7 @@ from terraform_generator.ingestion.loader import Loader
 from terraform_generator.input.analyzer import InputAnalyzer
 from terraform_generator.input.extractor import extract_architecture_payload
 from terraform_generator.input.validator import InputValidator
+from terraform_generator.input.vibe_selector import select_chosen_vibe
 from terraform_generator.normalization.normalizer import Normalizer
 from terraform_generator.storage.handler import StorageHandler
 from terraform_generator.terraform.generator import TerraformGenerator
@@ -44,9 +45,12 @@ class Orchestrator:
         file_path: str | Path | None = None,
         content: str | None = None,
         correlation_id: str | None = None,
+        decision: str | None = None,
     ) -> ProcessingCompletedPayload | ProcessingFailedPayload:
         """
         Process a JSON input file or content.
+        When decision is provided (vibe_economica or vibe_performance), only that vibe
+        is used for Terraform generation. When omitted, both vibes are processed (CLI backward compat).
         Returns ProcessingCompletedPayload on success, ProcessingFailedPayload on failure.
         """
         cid = correlation_id or str(uuid.uuid4())
@@ -72,14 +76,18 @@ class Orchestrator:
             # 3. Extract architecture payload from first item's 'output'
             architecture_payload = extract_architecture_payload(validated_list)
 
-            # 4. Service analysis
+            # 4. Select only the chosen vibe when decision is provided
+            if decision:
+                architecture_payload = select_chosen_vibe(architecture_payload, decision)
+
+            # 5. Service analysis
             raw_requirements = self.analyzer.analyze(architecture_payload)
 
-            # 5. Normalization
+            # 6. Normalization
             normalizer = Normalizer(correlation_id=cid, source_file=source_file)
             architecture = normalizer.normalize(raw_requirements)
 
-            # 6. Validation
+            # 7. Validation
             result = self.validator.validate(architecture)
             if not result.valid:
                 errors_str = "; ".join(f"{e.code}: {e.message}" for e in result.errors)
@@ -89,10 +97,10 @@ class Orchestrator:
                     error=errors_str,
                 )
 
-            # 7. Template selection + 8. Generation
+            # 8. Template selection + 9. Generation
             files = self.generator.generate(architecture)
 
-            # 9. Persistence: dev=local only, production=S3 only (no local write)
+            # 10. Persistence: dev=local only, production=S3 only (no local write)
             success, object_keys = self.storage_handler.persist(files, cid)
             if not success:
                 partial = object_keys if object_keys is not None else []
