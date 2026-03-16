@@ -73,6 +73,13 @@ def process(
             detail=f"Failed to fetch or parse JSON from R2 url: {json_url_r2}. Error: {str(e)}"
         )
 
+    # Normalize payload: accept both array and object formats
+    if isinstance(payload_json, dict):
+        if "output" in payload_json:
+            payload_json = [payload_json]
+        else:
+            payload_json = [{"output": payload_json}]
+
     # Attach event/project metadata to first item (input is array of items with 'output')
     if isinstance(payload_json, list) and payload_json:
         payload_json[0]["_event_id"] = event_id
